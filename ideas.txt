@@ -1,0 +1,68 @@
+These are my personal things that i struggle with and would like to implement in the app
+
+my focus for next month
+can only be three things
+a personal agent that can code for you and make customizable workflows for you
+a personal agent that can help you with your finances and investments
+a personal agent that can help you with your health and wellness
+
+a shopping agent that researches and finds the best deals for you.
+
+fetching whoop data
+fetching apple health data using google fit
+
+
+I need to find a way to make people feel they accomplished something share it with their community
+get people's financial spending data from their credit cards 
+
+
+sync with email/calendar  first priority
+
+I need to come up with a plan where people can connect to whatever data they want
+examples
+    google fit
+    whoop
+    google calendar
+    google email
+    strava
+    upload documents
+
+news aggregation for them/articles they will be interested in
+Books to download from libgen
+Reminder System ( given all the information that the ai has about them is something needs to be reminded in the morning and then also in the morning make plans to remind at specific points during the day)
+expense tracking (maybe through email)
+
+
+Need to have a browse functionality/search functionality
+code execution tool, that does everything for them (connects through data etc)
+
+either it needs to create a workout plan for you or 
+
+
+ile Operations: Manus can read from and write to files, enabling it to store intermediate results, drafts, and other data needed for tasks. 
+Shell Commands: As a cloud-based agent, Manus also has access to shell commands for installing packages and running system utilities within its virtual environment. 
+
+
+
+
+the main thing is the tool should adjust according to what you want to do, so for example let's say I want to be more social
+
+Pull books from libgen on that topic
+creates a plan
+makes exercises for you
+
+someone says "I want to more organized"
+The Ai creates a plan for you, things like jotting down to dos
+Then it tracks and gathers information for your to dos
+Keeps you on top of your deadlines from your emails
+keeps you prepared for your calendar
+
+Someone says I want to learn a new tech 
+The Ai pulls the right books creates a plan 
+creates exercises for you
+keeps you accountable
+
+
+essentially whatever someone wants to learn
+the ai pulls the right books from libgen
+makes a plan 

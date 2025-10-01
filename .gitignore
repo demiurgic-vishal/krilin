@@ -1,60 +1,214 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
-/.pnp
+# ================================
+# Node.js / JavaScript / Frontend
+# ================================
+# Dependencies
+node_modules/
+.pnp
 .pnp.js
 .yarn/install-state.gz
+
+# Lock files (package-lock.json is tracked for npm, others ignored)
 pnpm-lock.yaml
-package-lock.json
 
-# next.js
-/.next/
-/out/
+# Next.js
+.next/
+out/
+.next/types/
 
-# production
-/build
+# Build outputs
+build/
+dist/
 
-# debug
+# Debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
 
-# env files
-.env*
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# vercel
-.vercel
-
-# typescript
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# misc
-.DS_Store
-*.pem
+# Testing
+coverage/
+.nyc_output/
+.jest/
 
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
+# Vercel
+.vercel
+
+# ================================
+# Python / Backend
+# ================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+krilin/
+
+# Python distribution / packaging
+.Python
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage
+.pytest_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+
+# Django / Flask
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+instance/
+.webassets-cache
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SQLAlchemy
+*.db
+
+# Scrapy
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Poetry (poetry.lock is tracked for reproducible installs)
+
+# ================================
+# Environment Variables
+# ================================
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+# Keep example files
+!.env.example
+!.env.sample
+
+# ================================
+# IDEs and Editors
+# ================================
+# VSCode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+*.code-workspace
 
-# OS
+# IntelliJ / PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+# Eclipse
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+.pydevproject
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+*.swp
+*.swo
+*~
+
+# ================================
+# Operating System
+# ================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
 
-# testing
-/coverage
+# Linux
+.directory
+.Trash-*
+
+# ================================
+# Security & Secrets
+# ================================
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+credentials.json
+
+# ================================
+# Misc
+# ================================
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+.cache/
+
+# Logs
+logs/
+*.log
+
+# Docker volumes (if local)
+postgres-data/
+redis-data/

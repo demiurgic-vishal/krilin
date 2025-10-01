@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "PixelFont";
+  src: url("/fonts/pixel-font.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --background: #fffaeb;
+  --foreground: #33272a;
+  --primary: #ff6b35;
+  --secondary: #ffc15e;
+  --accent: #4ecdc4;
+  --muted: #594a4e;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.font-pixel {
+  font-family: "PixelFont", monospace;
+  letter-spacing: 0.05em;
+}
+
+/* Retro scanlines effect */
+.scanlines {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanlines::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1px,
+    rgba(0, 0, 0, 0.05) 1px,
+    rgba(0, 0, 0, 0.05) 2px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* CRT screen effect */
+.crt-effect {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.crt-effect::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.15) 90%);
+  pointer-events: none;
+}
+
+/* Pixel border utility */
+.pixel-border {
+  position: relative;
+  border: 4px solid #33272a;
+}
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 768px) {
+  .pixel-border {
+    border-width: 2px;
+  }
+  
+  .font-pixel {
+    font-size: 0.875rem;
+  }
+}
+
+/* Sophisticated transitions */
+* {
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Subtle hover effects */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 0 0 rgba(0, 0, 0, 0.6);
+}
+
+/* Professional glow effect */
+.glow-subtle {
+  transition: box-shadow 0.3s ease;
+}
+
+.glow-subtle:hover {
+  box-shadow: 4px 4px 0 0 rgba(0, 0, 0, 0.8),
+              0 0 20px rgba(255, 107, 53, 0.2);
+}
+
+/* Focus states for accessibility */
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #ff6b35;
+  outline-offset: 2px;
+}
+
+.pixel-border::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  background: transparent;
+  z-index: -1;
+  box-shadow: 4px 0 0 0 #33272a, 0 4px 0 0 #33272a, 4px 4px 0 0 #33272a, -4px 0 0 0 #33272a, 0 -4px 0 0 #33272a, -4px
+    -4px 0 0 #33272a, 4px -4px 0 0 #33272a, -4px 4px 0 0 #33272a;
+}
+
