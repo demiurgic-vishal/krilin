@@ -43,7 +43,9 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
       - SECRET_KEY=krilin-dev-secret-key-change-in-production
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-api-key-here}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Claude Agent SDK uses Claude CLI authentication (no API key needed)
+      # Mount ~/.claude from host to container for authentication
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,6 +54,7 @@ services:
     volumes:
       - .:/app
       - /app/.venv  # Don't mount virtual env
+      - ${HOME}/.claude:/root/.claude  # Mount Claude CLI config (read-write for project creation)
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
 
@@ -65,8 +68,9 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
       - SECRET_KEY=krilin-dev-secret-key-change-in-production
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-api-key-here}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - CELERY_WORKER=1
+      # Claude Agent SDK uses Claude CLI authentication
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,6 +81,7 @@ services:
     volumes:
       - .:/app
       - /app/.venv
+      - ${HOME}/.claude:/root/.claude  # Mount Claude CLI config (read-write for project creation)
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
     restart: unless-stopped
 
@@ -90,8 +95,9 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
       - SECRET_KEY=krilin-dev-secret-key-change-in-production
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-api-key-here}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - CELERY_WORKER=1
+      # Claude Agent SDK uses Claude CLI authentication
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,6 +108,7 @@ services:
     volumes:
       - .:/app
       - /app/.venv
+      - ${HOME}/.claude:/root/.claude  # Mount Claude CLI config (read-write for project creation)
     command: celery -A app.workers.celery_app beat --loglevel=info
     restart: unless-stopped
 

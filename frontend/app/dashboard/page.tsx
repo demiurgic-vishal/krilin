@@ -6,11 +6,9 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth/AuthContext"
 import { useGoals } from "@/lib/hooks/useGoals"
 import { useConversations } from "@/lib/hooks/useChat"
-import KrilinPageLayout from "@/components/krilin-page-layout"
-import KrilinCardEnhanced from "@/components/krilin-card-enhanced"
-import KrilinButtonEnhanced from "@/components/krilin-button-enhanced"
-import KrilinPowerMeter from "@/components/krilin-power-meter"
-import { Calendar, MessageSquare, FileText, Clock, Target } from "lucide-react"
+import { Card } from "@/components/retroui/Card"
+import { Button } from "@/components/retroui/Button"
+import { MessageSquare, Target, Zap, Settings, TrendingUp, Activity, Home } from "lucide-react"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -27,11 +25,11 @@ export default function DashboardPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fef6e4]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#33272a] font-pixel mb-4">LOADING...</div>
-          <div className="w-16 h-2 bg-[#33272a] mx-auto">
-            <div className="h-full bg-[#ff6b35] animate-pulse" style={{ width: '50%' }} />
+          <div className="text-3xl font-[var(--font-head)] mb-4 uppercase">Loading...</div>
+          <div className="w-32 h-4 bg-[var(--muted)] mx-auto border-2 border-[var(--border)]">
+            <div className="h-full bg-[var(--primary)] pixel-pulse w-1/2" />
           </div>
         </div>
       </div>
@@ -41,211 +39,196 @@ export default function DashboardPage() {
   // Calculate stats from real data
   const activeGoals = goals.filter(g => g.status === 'active')
   const completedGoals = goals.filter(g => g.status === 'completed')
-  const averageProgress = activeGoals.length > 0
-    ? Math.round(activeGoals.reduce((sum, g) => sum + g.current_progress, 0) / activeGoals.length)
-    : 0
 
   return (
-    <KrilinPageLayout
-      title="COMMAND CENTER"
-      showBackButton={true}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Dashboard" }
-      ]}
-    >
-      {/* Welcome Banner */}
-      <div className="mb-8 border-4 border-[#33272a] bg-gradient-to-r from-[#ff6b35] to-[#ffc15e] p-6">
-        <h2 className="text-2xl font-bold text-white font-pixel mb-2">
-          WELCOME BACK, {user.full_name?.toUpperCase() || 'WARRIOR'}!
-        </h2>
-        <p className="text-white/90">Ready to power up your day?</p>
-      </div>
-
-      {/* Main Stats Grid */}
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
-        <KrilinCardEnhanced 
-          title="POWER STATS"
-          variant="default"
-          headerColor="#ff6b35"
-        >
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm">ACTIVE GOALS</span>
-                <span className="text-sm font-bold">{activeGoals.length}</span>
-              </div>
-              <KrilinPowerMeter value={Math.min((activeGoals.length / 10) * 100, 100)} label="POWER" />
+    <div className="min-h-screen bg-[var(--background)]">
+      {/* Header */}
+      <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <Link href="/">
+                <Button variant="ghost" size="icon">
+                  <Home size={24} />
+                </Button>
+              </Link>
+              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                Dashboard
+              </h1>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm">GOALS COMPLETED</span>
-                <span className="text-sm font-bold">{completedGoals.length}/{goals.length}</span>
-              </div>
-              <KrilinPowerMeter 
-                value={goals.length > 0 ? Math.round((completedGoals.length / goals.length) * 100) : 0} 
-                label="COMPLETION" 
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm">AVERAGE PROGRESS</span>
-                <span className="text-sm font-bold">{averageProgress}%</span>
-              </div>
-              <KrilinPowerMeter value={averageProgress} label="EFFICIENCY" />
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-[var(--muted-foreground)]">
+                {user.email}
+              </span>
+              <Link href="/settings">
+                <Button variant="outline" size="sm">
+                  <Settings size={16} className="mr-2" />
+                  Settings
+                </Button>
+              </Link>
             </div>
           </div>
-        </KrilinCardEnhanced>
+        </div>
+      </header>
 
-        <KrilinCardEnhanced 
-          title="QUICK ACTIONS"
-          variant="default"
-          headerColor="#4ecdc4"
-        >
-          <div className="grid grid-cols-2 gap-3 mb-4">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="border-2 border-[var(--border)] bg-[var(--primary)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-4xl font-bold mb-1">{activeGoals.length}</div>
+                <div className="text-sm uppercase font-medium">Active Goals</div>
+              </div>
+              <Target size={48} className="opacity-50" />
+            </div>
+          </div>
+
+          <div className="border-2 border-[var(--border)] bg-[var(--success)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-4xl font-bold mb-1">{completedGoals.length}</div>
+                <div className="text-sm uppercase font-medium">Completed</div>
+              </div>
+              <TrendingUp size={48} className="opacity-50" />
+            </div>
+          </div>
+
+          <div className="border-2 border-[var(--border)] bg-[var(--accent)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-4xl font-bold mb-1">{conversations.length}</div>
+                <div className="text-sm uppercase font-medium">Conversations</div>
+              </div>
+              <Activity size={48} className="opacity-50" />
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-[var(--font-head)] mb-6 uppercase">Quick Actions</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Link href="/chat">
-              <KrilinButtonEnhanced 
-                variant="secondary" 
-                className="w-full h-auto py-3 flex flex-col items-center gap-2"
-              >
-                <MessageSquare size={20} />
-                <span>NEW CHAT</span>
-              </KrilinButtonEnhanced>
+              <Button variant="default" className="w-full h-16">
+                <MessageSquare size={20} className="mr-2" />
+                Chat
+              </Button>
             </Link>
             <Link href="/goals">
-              <KrilinButtonEnhanced 
-                variant="secondary" 
-                className="w-full h-auto py-3 flex flex-col items-center gap-2"
-              >
-                <Target size={20} />
-                <span>GOALS</span>
-              </KrilinButtonEnhanced>
+              <Button variant="success" className="w-full h-16">
+                <Target size={20} className="mr-2" />
+                Goals
+              </Button>
             </Link>
             <Link href="/workflows">
-              <KrilinButtonEnhanced 
-                variant="secondary" 
-                className="w-full h-auto py-3 flex flex-col items-center gap-2"
-              >
-                <FileText size={20} />
-                <span>WORKFLOWS</span>
-              </KrilinButtonEnhanced>
+              <Button variant="accent" className="w-full h-16">
+                <Zap size={20} className="mr-2" />
+                Workflows
+              </Button>
             </Link>
             <Link href="/settings">
-              <KrilinButtonEnhanced 
-                variant="secondary" 
-                className="w-full h-auto py-3 flex flex-col items-center gap-2"
-              >
-                <Clock size={20} />
-                <span>SETTINGS</span>
-              </KrilinButtonEnhanced>
+              <Button variant="secondary" className="w-full h-16">
+                <Settings size={20} className="mr-2" />
+                Settings
+              </Button>
             </Link>
           </div>
-        </KrilinCardEnhanced>
-      </div>
+        </div>
 
-      {/* Active Goals and Recent Conversations Grid */}
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
-        <KrilinCardEnhanced 
-          title="ACTIVE MISSIONS"
-          variant="default"
-          headerColor="#ff6b35"
-        >
-          {goalsLoading ? (
-            <div className="text-center py-8">
-              <div className="text-sm text-[#594a4e]">LOADING GOALS...</div>
-            </div>
-          ) : activeGoals.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-[#594a4e] mb-4">NO ACTIVE GOALS YET</p>
-              <Link href="/goals">
-                <KrilinButtonEnhanced variant="primary">
-                  CREATE YOUR FIRST GOAL
-                </KrilinButtonEnhanced>
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {activeGoals.slice(0, 4).map((goal) => (
-                <Link href={`/goals/${goal.id}`} key={goal.id}>
-                  <div className="border-2 border-[#33272a] p-3 hover-lift cursor-pointer">
-                    <div className="flex justify-between mb-2">
-                      <h3 className="font-bold">{goal.title}</h3>
-                      <span
-                        className={`px-2 py-0.5 text-xs ${
-                          goal.priority >= 8 ? "bg-[#ff6b35] text-white" : "bg-[#ffc15e] text-[#33272a]"
-                        }`}
-                      >
-                        {goal.priority >= 8 ? 'HIGH' : goal.priority >= 5 ? 'MEDIUM' : 'LOW'}
-                      </span>
-                    </div>
-                    {goal.target_date && (
-                      <p className="text-xs mb-2">
-                        Target: {new Date(goal.target_date).toLocaleDateString()}
-                      </p>
-                    )}
-                    <KrilinPowerMeter value={goal.current_progress} label="PROGRESS" />
-                  </div>
-                </Link>
-              ))}
-              {activeGoals.length > 4 && (
-                <Link href="/goals">
-                  <KrilinButtonEnhanced variant="primary" className="w-full">
-                    VIEW ALL GOALS
-                  </KrilinButtonEnhanced>
-                </Link>
+        {/* Main Content Grid */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Active Goals */}
+          <Card>
+            <Card.Header>
+              <Card.Title>Active Goals</Card.Title>
+              <Card.Description>Track your progress</Card.Description>
+            </Card.Header>
+            <Card.Content>
+              {goalsLoading ? (
+                <div className="text-center py-8 text-[var(--muted-foreground)]">Loading...</div>
+              ) : activeGoals.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-[var(--muted-foreground)] mb-4">No active goals yet</p>
+                  <Link href="/goals">
+                    <Button>Create Goal</Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {activeGoals.slice(0, 3).map((goal) => (
+                    <Link href={`/goals/${goal.id}`} key={goal.id}>
+                      <div className="p-4 border-2 border-[var(--border)] hover:shadow-[4px_4px_0_0_var(--border)] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] cursor-pointer">
+                        <div className="font-bold mb-2">{goal.title}</div>
+                        <div className="flex justify-between items-center text-sm text-[var(--muted-foreground)]">
+                          <span>{goal.current_progress}% complete</span>
+                          {goal.target_date && (
+                            <span>{new Date(goal.target_date).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                        <div className="mt-2 h-2 bg-[var(--muted)] border-2 border-[var(--border)]">
+                          <div
+                            className="h-full bg-[var(--success)]"
+                            style={{ width: `${goal.current_progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                  {activeGoals.length > 3 && (
+                    <Link href="/goals">
+                      <Button variant="outline" className="w-full">View All Goals</Button>
+                    </Link>
+                  )}
+                </div>
               )}
-            </div>
-          )}
-        </KrilinCardEnhanced>
+            </Card.Content>
+          </Card>
 
-        <KrilinCardEnhanced 
-          title="RECENT COMMUNICATIONS"
-          variant="default"
-          headerColor="#ffc15e"
-        >
-          {conversationsLoading ? (
-            <div className="text-center py-8">
-              <div className="text-sm text-[#594a4e]">LOADING CONVERSATIONS...</div>
-            </div>
-          ) : conversations.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-[#594a4e] mb-4">NO CONVERSATIONS YET</p>
-              <Link href="/chat">
-                <KrilinButtonEnhanced variant="primary">
-                  START CHATTING
-                </KrilinButtonEnhanced>
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {conversations.map((convo) => (
-                <Link href={`/chat/${convo.id}`} key={convo.id}>
-                  <div className="border-2 border-[#33272a] p-3 cursor-pointer hover-lift">
-                    <div className="flex justify-between mb-1">
-                      <h3 className="font-bold">{convo.title}</h3>
-                      <span className="text-xs">
-                        {convo.last_message_at 
-                          ? new Date(convo.last_message_at).toLocaleDateString()
-                          : 'No messages'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#594a4e]">
-                      Agent: {convo.agent_type}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-              <Link href="/chat">
-                <KrilinButtonEnhanced variant="primary" className="w-full">
-                  VIEW ALL CONVERSATIONS
-                </KrilinButtonEnhanced>
-              </Link>
-            </div>
-          )}
-        </KrilinCardEnhanced>
-      </div>
-    </KrilinPageLayout>
+          {/* Recent Conversations */}
+          <Card>
+            <Card.Header>
+              <Card.Title>Recent Chats</Card.Title>
+              <Card.Description>Continue your conversations</Card.Description>
+            </Card.Header>
+            <Card.Content>
+              {conversationsLoading ? (
+                <div className="text-center py-8 text-[var(--muted-foreground)]">Loading...</div>
+              ) : conversations.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-[var(--muted-foreground)] mb-4">No conversations yet</p>
+                  <Link href="/chat">
+                    <Button>Start Chatting</Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {conversations.map((convo) => (
+                    <Link href={`/chat/${convo.id}`} key={convo.id}>
+                      <div className="p-4 border-2 border-[var(--border)] hover:shadow-[4px_4px_0_0_var(--border)] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] cursor-pointer">
+                        <div className="font-bold mb-2">{convo.title}</div>
+                        <div className="text-sm text-[var(--muted-foreground)] truncate">
+                          {convo.messages.length > 0
+                            ? convo.messages[convo.messages.length - 1].content.substring(0, 100) + '...'
+                            : 'No messages yet'}
+                        </div>
+                        <div className="text-xs text-[var(--muted-foreground)] mt-2">
+                          {convo.last_message_at
+                            ? new Date(convo.last_message_at).toLocaleDateString()
+                            : 'No messages'}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                  <Link href="/chat">
+                    <Button variant="outline" className="w-full">View All Chats</Button>
+                  </Link>
+                </div>
+              )}
+            </Card.Content>
+          </Card>
+        </div>
+      </main>
+    </div>
   )
 }

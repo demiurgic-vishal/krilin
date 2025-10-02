@@ -1,8 +1,9 @@
 "use client"
 
 import { Suspense, useState } from "react"
-import KrilinPageLayout from "@/components/krilin-page-layout"
-import KrilinButtonEnhanced from "@/components/krilin-button-enhanced"
+import Link from "next/link"
+import { Button } from "@/components/retroui/Button"
+import { ArrowLeft } from "lucide-react"
 import KrilinAchievementSystem from "@/components/gamification/krilin-achievement-system"
 import KrilinHabitTracker from "@/components/gamification/krilin-habit-tracker"
 import KrilinPomodoroTimer from "@/components/gamification/krilin-pomodoro-timer"
@@ -33,52 +34,59 @@ export default function ProductivityPage() {
   >('achievements')
 
   const tabs = [
-    { key: 'achievements', label: 'ACHIEVEMENTS & STATS' },
-    { key: 'habits', label: 'HABIT TRACKER' },
-    { key: 'pomodoro', label: 'POMODORO TIMER' },
-    { key: 'mood', label: 'MOOD TRACKER' },
-    { key: 'goals', label: 'GOAL TRACKER' },
-    { key: 'gratitude', label: 'GRATITUDE JOURNAL' },
-    { key: 'mindfulness', label: 'MINDFULNESS' },
-    { key: 'sleep', label: 'SLEEP QUALITY' },
-    { key: 'ai-advisor', label: 'AI ADVISOR' },
-    { key: 'data-dashboard', label: 'DATA DASHBOARD' },
-    { key: 'smart-home', label: 'SMART HOME' },
+    { key: 'achievements', label: 'Achievements & Stats' },
+    { key: 'habits', label: 'Habit Tracker' },
+    { key: 'pomodoro', label: 'Pomodoro Timer' },
+    { key: 'mood', label: 'Mood Tracker' },
+    { key: 'goals', label: 'Goal Tracker' },
+    { key: 'gratitude', label: 'Gratitude Journal' },
+    { key: 'mindfulness', label: 'Mindfulness' },
+    { key: 'sleep', label: 'Sleep Quality' },
+    { key: 'ai-advisor', label: 'AI Advisor' },
+    { key: 'data-dashboard', label: 'Data Dashboard' },
+    { key: 'smart-home', label: 'Smart Home' },
   ] as const
 
   return (
-    <KrilinPageLayout
-      title="PRODUCTIVITY DOJO"
-      subtitle="Even without superhuman powers, we can achieve amazing things with the right techniques!"
-      showBackButton={true}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Productivity" }
-      ]}
-      footerSubtitle="TRAIN SMART, WORK SMARTER!"
-      headerContent={
-        <p className="text-center text-[#ff6b35] font-pixel text-sm">
-          "I've always relied on training smart, not just hard. That's how I keep up with the Saiyans!" - Krillin
-        </p>
-      }
-      containerSize="full"
-    >
-      {/* Tab Navigation */}
-      <div className="flex flex-wrap justify-center gap-3 mb-8">
-        {tabs.map((tab, index) => (
-          <KrilinButtonEnhanced
-            key={tab.key}
-            variant={activeTab === tab.key ? "primary" : "secondary"}
-            onClick={() => setActiveTab(tab.key as typeof activeTab)}
-            className="text-xs px-3 py-2"
-          >
-            {tab.label}
-          </KrilinButtonEnhanced>
-        ))}
-      </div>
+    <div className="min-h-screen bg-[var(--background)]">
+      <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft size={24} />
+              </Button>
+            </Link>
+            <div className="flex-1">
+              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                Productivity Dojo
+              </h1>
+              <p className="text-sm text-[var(--muted-foreground)] mt-1">Even without superhuman powers, we can achieve amazing things with the right techniques!</p>
+              <p className="text-center text-[var(--primary)] font-[var(--font-head)] text-sm mt-2">
+                "I've always relied on training smart, not just hard. That's how I keep up with the Saiyans!" - Krillin
+              </p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Tab Navigation */}
+        <div className="flex flex-wrap justify-center gap-3 mb-8">
+          {tabs.map((tab, index) => (
+            <Button
+              key={tab.key}
+              variant={activeTab === tab.key ? "default" : "secondary"}
+              onClick={() => setActiveTab(tab.key as typeof activeTab)}
+              size="sm"
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
       
-      {/* Tab Content */}
-      <div className="min-h-[500px]">
+        {/* Tab Content */}
+        <div className="min-h-[500px]">
           <Suspense fallback={
             <div className="flex items-center justify-center h-96">
               <PixelLoader variant="spinner" size="lg" text="Loading..." />
@@ -95,8 +103,9 @@ export default function ProductivityPage() {
             {activeTab === 'ai-advisor' && <KrilinAiAdvisor />}
             {activeTab === 'data-dashboard' && <KrilinDataDashboard />}
             {activeTab === 'smart-home' && <KrilinSmartHome />}
-        </Suspense>
-      </div>
-    </KrilinPageLayout>
+          </Suspense>
+        </div>
+      </main>
+    </div>
   )
 }

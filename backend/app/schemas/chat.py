@@ -43,9 +43,24 @@ class MessageResponse(MessageBase):
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
+
+    @classmethod
+    def from_orm(cls, obj):
+        """Custom from_orm to handle SQLAlchemy message_metadata field."""
+        data = {
+            'id': obj.id,
+            'conversation_id': obj.conversation_id,
+            'role': obj.role,
+            'content': obj.content,
+            'metadata': obj.message_metadata if obj.message_metadata is not None else {},
+            'prompt_tokens': obj.prompt_tokens,
+            'completion_tokens': obj.completion_tokens,
+            'created_at': obj.created_at
+        }
+        return cls(**data)
 
 
 class ConversationResponse(ConversationBase):
@@ -58,9 +73,30 @@ class ConversationResponse(ConversationBase):
     updated_at: datetime
     last_message_at: Optional[datetime] = None
     messages: list[MessageResponse] = Field(default_factory=list)
-    
+
     class Config:
         from_attributes = True
+
+    @classmethod
+    def from_orm(cls, obj):
+        """Custom from_orm to handle nested messages with metadata."""
+        # Manually serialize messages to avoid Pydantic validation issues
+        messages = [MessageResponse.from_orm(msg) for msg in obj.messages]
+
+        data = {
+            'id': obj.id,
+            'user_id': obj.user_id,
+            'title': obj.title,
+            'agent_type': obj.agent_type,
+            'context': obj.context,
+            'goals_discussed': obj.goals_discussed,
+            'is_active': obj.is_active,
+            'created_at': obj.created_at,
+            'updated_at': obj.updated_at,
+            'last_message_at': obj.last_message_at,
+            'messages': messages
+        }
+        return cls(**data)
 
 
 class ChatRequest(BaseModel):

@@ -22,7 +22,7 @@ from app.schemas.goal import (
     ProgressEntryCreate,
     ProgressEntryResponse,
 )
-from app.services.ai_agent import get_agent_by_type
+from app.services.claude_agent_service import get_agent_by_type
 from app.api.v1.chat import determine_agent_from_message
 
 router = APIRouter()

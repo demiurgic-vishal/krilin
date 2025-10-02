@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useAuth } from "@/lib/auth/AuthContext"
-import KrilinPageLayout from "@/components/krilin-page-layout"
-import KrilinCardEnhanced from "@/components/krilin-card-enhanced"
-import KrilinButtonEnhanced from "@/components/krilin-button-enhanced"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { User, Mail, Clock, LogOut } from "lucide-react"
+import { Button } from "@/components/retroui/Button"
+import { Card } from "@/components/retroui/Card"
+import { Input } from "@/components/retroui/Input"
+import { User, Mail, Clock, LogOut, Home, Shield } from "lucide-react"
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -28,9 +27,12 @@ export default function SettingsPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fef6e4]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#33272a] font-pixel mb-4">LOADING...</div>
+          <div className="text-3xl font-[var(--font-head)] mb-4 uppercase">Loading...</div>
+          <div className="w-32 h-4 bg-[var(--muted)] mx-auto border-2 border-[var(--border)]">
+            <div className="h-full bg-[var(--primary)] pixel-pulse w-1/2" />
+          </div>
         </div>
       </div>
     )
@@ -51,151 +53,154 @@ export default function SettingsPage() {
   }
 
   return (
-    <KrilinPageLayout
-      title="SYSTEM CONFIGURATION"
-      showBackButton={true}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Settings" }
-      ]}
-      footerSubtitle="POWER UP YOUR PRODUCTIVITY"
-      containerSize="md"
-    >
-      <KrilinCardEnhanced
-        title="USER PROFILE"
-        variant="default"
-        headerColor="#ff6b35"
-      >
+    <div className="min-h-screen bg-[var(--background)]">
+      <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="icon">
+                <Home size={24} />
+              </Button>
+            </Link>
+            <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+              Settings
+            </h1>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="space-y-6">
-          <div className="flex items-center gap-4 pb-4 border-b-2 border-[#33272a]/20">
-            <div className="w-16 h-16 rounded-full bg-[#ff6b35] flex items-center justify-center">
-              <User size={32} className="text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-[#33272a]">
-                {user.full_name || 'Warrior'}
-              </h3>
-              <p className="text-sm text-[#594a4e]">{user.email}</p>
-            </div>
-          </div>
+          {/* User Profile */}
+          <Card>
+            <Card.Header>
+              <Card.Title>User Profile</Card.Title>
+            </Card.Header>
+            <Card.Content className="space-y-6">
+              <div className="flex items-center gap-4 pb-4 border-b-2 border-[var(--border)]">
+                <div className="w-16 h-16 border-2 border-[var(--border)] bg-[var(--primary)] flex items-center justify-center shadow-[4px_4px_0_0_var(--border)]">
+                  <User size={32} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">{user.full_name || 'User'}</h3>
+                  <p className="text-sm text-[var(--muted-foreground)]">{user.email}</p>
+                </div>
+              </div>
 
-          <div>
-            <Label htmlFor="email" className="font-bold flex items-center gap-2">
-              <Mail size={16} />
-              EMAIL
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={user.email}
-              disabled
-              className="mt-2 border-2 border-[#33272a] bg-gray-100"
-            />
-            <p className="text-xs text-[#594a4e] mt-1">Email cannot be changed</p>
-          </div>
+              <div>
+                <label className="block text-sm font-bold mb-2 uppercase flex items-center gap-2">
+                  <Mail size={16} />
+                  Email
+                </label>
+                <Input
+                  type="email"
+                  value={user.email}
+                  disabled
+                  className="bg-[var(--muted)] cursor-not-allowed"
+                />
+                <p className="text-xs text-[var(--muted-foreground)] mt-1">Email cannot be changed</p>
+              </div>
 
-          <div>
-            <Label htmlFor="fullName" className="font-bold flex items-center gap-2">
-              <User size={16} />
-              FULL NAME
-            </Label>
-            <Input
-              id="fullName"
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="mt-2 border-2 border-[#33272a]"
-              disabled={saving}
-            />
-          </div>
+              <div>
+                <label className="block text-sm font-bold mb-2 uppercase flex items-center gap-2">
+                  <User size={16} />
+                  Full Name
+                </label>
+                <Input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  disabled={saving}
+                />
+              </div>
 
-          <div>
-            <Label htmlFor="timezone" className="font-bold flex items-center gap-2">
-              <Clock size={16} />
-              TIMEZONE
-            </Label>
-            <Input
-              id="timezone"
-              type="text"
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              className="mt-2 border-2 border-[#33272a]"
-              disabled={saving}
-              placeholder="e.g., America/New_York"
-            />
-          </div>
+              <div>
+                <label className="block text-sm font-bold mb-2 uppercase flex items-center gap-2">
+                  <Clock size={16} />
+                  Timezone
+                </label>
+                <Input
+                  type="text"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  disabled={saving}
+                  placeholder="e.g., America/New_York"
+                />
+              </div>
 
-          <div className="pt-4 border-t-2 border-[#33272a]/20">
-            <KrilinButtonEnhanced
-              variant="primary"
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full"
-            >
-              {saving ? 'SAVING...' : 'SAVE CHANGES'}
-            </KrilinButtonEnhanced>
-          </div>
+              <div className="pt-4 border-t-2 border-[var(--border)]">
+                <Button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="w-full"
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </Card.Content>
+          </Card>
+
+          {/* Account Info */}
+          <Card>
+            <Card.Header className="bg-[var(--success)]">
+              <Card.Title>Account Info</Card.Title>
+            </Card.Header>
+            <Card.Content>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm font-bold uppercase">Status</span>
+                  <span className="px-3 py-1 bg-[var(--success)] text-[var(--success-foreground)] text-xs font-bold uppercase border-2 border-[var(--border)]">
+                    {user.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm font-bold uppercase">Verified</span>
+                  <span className="px-3 py-1 bg-[var(--info)] text-[var(--info-foreground)] text-xs font-bold uppercase border-2 border-[var(--border)]">
+                    {user.is_verified ? 'Yes' : 'No'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm font-bold uppercase">Member Since</span>
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    {new Date(user.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+
+                {user.last_login && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm font-bold uppercase">Last Login</span>
+                    <span className="text-sm text-[var(--muted-foreground)]">
+                      {new Date(user.last_login).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Card.Content>
+          </Card>
+
+          {/* Danger Zone */}
+          <Card>
+            <Card.Header className="bg-[var(--destructive)]">
+              <Card.Title className="text-[var(--destructive-foreground)]">Danger Zone</Card.Title>
+            </Card.Header>
+            <Card.Content>
+              <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                Logout from your account. You'll need to login again to access Krilin.
+              </p>
+              <Button
+                onClick={handleLogout}
+                variant="destructive"
+                className="w-full"
+              >
+                <LogOut size={16} className="mr-2" />
+                Logout
+              </Button>
+            </Card.Content>
+          </Card>
         </div>
-      </KrilinCardEnhanced>
-
-      <KrilinCardEnhanced
-        title="ACCOUNT INFO"
-        variant="default"
-        headerColor="#4ecdc4"
-      >
-        <div className="space-y-4">
-          <div className="flex justify-between items-center py-2">
-            <span className="text-sm font-bold">ACCOUNT STATUS</span>
-            <span className="px-3 py-1 bg-[#95e1d3] text-[#33272a] text-xs font-bold">
-              {user.is_active ? 'ACTIVE' : 'INACTIVE'}
-            </span>
-          </div>
-
-          <div className="flex justify-between items-center py-2">
-            <span className="text-sm font-bold">VERIFIED</span>
-            <span className="px-3 py-1 bg-[#4ecdc4] text-white text-xs font-bold">
-              {user.is_verified ? 'YES' : 'NO'}
-            </span>
-          </div>
-
-          <div className="flex justify-between items-center py-2">
-            <span className="text-sm font-bold">MEMBER SINCE</span>
-            <span className="text-sm text-[#594a4e]">
-              {new Date(user.created_at).toLocaleDateString()}
-            </span>
-          </div>
-
-          {user.last_login && (
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm font-bold">LAST LOGIN</span>
-              <span className="text-sm text-[#594a4e]">
-                {new Date(user.last_login).toLocaleString()}
-              </span>
-            </div>
-          )}
-        </div>
-      </KrilinCardEnhanced>
-
-      <KrilinCardEnhanced
-        title="DANGER ZONE"
-        variant="default"
-        headerColor="#ff6b35"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-[#594a4e]">
-            Logout from your account. You'll need to login again to access Krilin AI.
-          </p>
-
-          <KrilinButtonEnhanced
-            variant="secondary"
-            onClick={handleLogout}
-            className="w-full gap-2 bg-red-100 hover:bg-red-200 text-red-700"
-          >
-            <LogOut size={16} />
-            LOGOUT
-          </KrilinButtonEnhanced>
-        </div>
-      </KrilinCardEnhanced>
-    </KrilinPageLayout>
+      </main>
+    </div>
   )
 }

@@ -6,7 +6,7 @@ import { ChevronRight, ArrowLeft } from "lucide-react"
 import EnhancedKrilinHeader from "@/components/enhanced-krilin-header"
 import KrilinWisdomStrip from "@/components/layout/krilin-wisdom-strip"
 import KrilinFooter from "@/components/krilin-footer"
-import KrilinButton from "@/components/krilin-button"
+import { Button } from "@/components/retroui/Button"
 import { cn } from "@/lib/utils"
 
 interface BreadcrumbItem {
@@ -48,7 +48,7 @@ export default function KrilinPageLayout({
   headerContent
 }: KrilinPageLayoutProps) {
   return (
-    <div className="min-h-screen bg-[#fffaeb] font-pixel flex flex-col">
+    <div className="min-h-screen bg-[var(--background)] font-pixel flex flex-col">
       <EnhancedKrilinHeader />
       <KrilinWisdomStrip />
 
@@ -58,10 +58,10 @@ export default function KrilinPageLayout({
           {showBackButton && (
             <div className="mb-4">
               <Link href={backHref}>
-                <KrilinButton variant="secondary" className="gap-2">
+                <Button variant="secondary" className="gap-2">
                   <ArrowLeft size={16} />
                   BACK
-                </KrilinButton>
+                </Button>
               </Link>
             </div>
           )}
@@ -72,16 +72,16 @@ export default function KrilinPageLayout({
               <ol className="flex items-center space-x-2 text-sm font-pixel">
                 {breadcrumbs.map((item, index) => (
                   <li key={index} className="flex items-center">
-                    {index > 0 && <ChevronRight size={14} className="mx-2 text-[#594a4e]" />}
+                    {index > 0 && <ChevronRight size={14} className="mx-2 text-[var(--muted-foreground)]" />}
                     {item.href ? (
-                      <Link 
-                        href={item.href} 
-                        className="text-[#594a4e] hover:text-[#ff6b35] transition-colors"
+                      <Link
+                        href={item.href}
+                        className="text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors"
                       >
                         {item.label}
                       </Link>
                     ) : (
-                      <span className="text-[#33272a] font-bold">{item.label}</span>
+                      <span className="text-[var(--foreground)] font-bold">{item.label}</span>
                     )}
                   </li>
                 ))}
@@ -93,15 +93,15 @@ export default function KrilinPageLayout({
           {(title || subtitle || headerContent) && (
             <header className="mb-8">
               {title && (
-                <div className="pixel-border bg-[#594a4e] p-1 mb-4">
-                  <div className="bg-[#33272a] text-white p-4 text-center">
+                <div className="border-2 border-[var(--border)] shadow-md mb-4">
+                  <div className="bg-[var(--secondary)] text-[var(--secondary-foreground)] p-4 text-center">
                     <h1 className="text-xl md:text-2xl font-pixel">{title}</h1>
                   </div>
                 </div>
               )}
-              
+
               {subtitle && (
-                <p className="text-center text-[#594a4e] mb-4 text-sm md:text-base">
+                <p className="text-center text-[var(--muted-foreground)] mb-4 text-sm md:text-base">
                   {subtitle}
                 </p>
               )}

@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useAuth } from "@/lib/auth/AuthContext"
 import { apiClient } from "@/lib/api/client"
-import KrilinPageLayout from "@/components/krilin-page-layout"
-import KrilinCardEnhanced from "@/components/krilin-card-enhanced"
-import KrilinButtonEnhanced from "@/components/krilin-button-enhanced"
-import { Calendar, Clock, MapPin, Users, RefreshCw } from "lucide-react"
+import { Button } from "@/components/retroui/Button"
+import { Card } from "@/components/retroui/Card"
+import { Calendar, Clock, MapPin, Users, RefreshCw, ArrowLeft } from "lucide-react"
 
 interface CalendarEvent {
   id: number
@@ -95,156 +95,166 @@ export default function CalendarEventsPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fef6e4]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#33272a] font-pixel mb-4">LOADING...</div>
+          <div className="text-3xl font-[var(--font-head)] mb-4 uppercase">Loading...</div>
+          <div className="w-32 h-4 bg-[var(--muted)] mx-auto border-2 border-[var(--border)]">
+            <div className="h-full bg-[var(--primary)] pixel-pulse w-1/2" />
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <KrilinPageLayout
-      title="CALENDAR EVENTS"
-      subtitle="Your synced Google Calendar events"
-      showBackButton={true}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Integrations", href: "/integrations" },
-        { label: "Calendar Events" }
-      ]}
-    >
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-bold text-[#33272a] font-pixel">
-            {events.length} EVENTS SYNCED
-          </h2>
+    <div className="min-h-screen bg-[var(--background)]">
+      <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center gap-4">
+            <Link href="/integrations">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft size={24} />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                Calendar Events
+              </h1>
+              <p className="text-sm text-[var(--muted-foreground)] mt-1">Your synced Google Calendar events</p>
+            </div>
+          </div>
         </div>
-        <KrilinButtonEnhanced
-          variant="primary"
-          onClick={handleSync}
-          disabled={syncing || !dataSourceId}
-          className="gap-2"
-        >
-          <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
-          {syncing ? "SYNCING..." : "SYNC NOW"}
-        </KrilinButtonEnhanced>
-      </div>
+      </header>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="text-xl text-[#594a4e]">LOADING EVENTS...</div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold font-[var(--font-head)] uppercase">
+              {events.length} Events Synced
+            </h2>
+          </div>
+          <Button
+            onClick={handleSync}
+            disabled={syncing || !dataSourceId}
+            className="gap-2"
+          >
+            <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Syncing..." : "Sync Now"}
+          </Button>
         </div>
-      ) : !dataSourceId ? (
-        <KrilinCardEnhanced title="NO CALENDAR CONNECTED" variant="default" headerColor="#ff6b35">
+
+        {loading ? (
           <div className="text-center py-12">
-            <Calendar size={64} className="mx-auto mb-4 text-[#594a4e]" />
-            <p className="text-[#594a4e] mb-6">
-              You haven't connected Google Calendar yet.
-            </p>
-            <KrilinButtonEnhanced
-              variant="primary"
-              onClick={() => router.push('/integrations')}
-            >
-              GO TO INTEGRATIONS
-            </KrilinButtonEnhanced>
+            <div className="text-xl text-[var(--muted-foreground)] uppercase">Loading events...</div>
           </div>
-        </KrilinCardEnhanced>
-      ) : events.length === 0 ? (
-        <KrilinCardEnhanced title="NO EVENTS FOUND" variant="default" headerColor="#4ecdc4">
-          <div className="text-center py-12">
-            <Calendar size={64} className="mx-auto mb-4 text-[#594a4e]" />
-            <p className="text-[#594a4e] mb-6">
-              No calendar events found. Try syncing to fetch your events.
-            </p>
-            <KrilinButtonEnhanced
-              variant="primary"
-              onClick={handleSync}
-              disabled={syncing}
-            >
-              <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
-              SYNC NOW
-            </KrilinButtonEnhanced>
-          </div>
-        </KrilinCardEnhanced>
-      ) : (
-        <div className="space-y-4">
-          {events.map((event) => (
-            <KrilinCardEnhanced
-              key={event.id}
-              title={event.data.title || "Untitled Event"}
-              variant="default"
-              headerColor={event.data.is_all_day ? "#95e1d3" : "#4ecdc4"}
-            >
-              <div className="space-y-3">
-                <div className="flex items-start gap-2">
-                  <Clock size={16} className="mt-1 text-[#ff6b35]" />
-                  <div className="flex-1">
-                    <div className="text-sm font-bold">
-                      {formatDateTime(event.data.start_time, event.data.is_all_day)}
-                    </div>
-                    {!event.data.is_all_day && (
-                      <div className="text-xs text-[#594a4e]">
-                        to {formatDateTime(event.data.end_time, event.data.is_all_day)}
+        ) : !dataSourceId ? (
+          <Card>
+            <Card.Header className="bg-[var(--primary)]">
+              <Card.Title>No Calendar Connected</Card.Title>
+            </Card.Header>
+            <Card.Content className="text-center py-12">
+              <Calendar size={64} className="mx-auto mb-4 text-[var(--muted-foreground)]" />
+              <p className="text-[var(--muted-foreground)] mb-6">
+                You haven't connected Google Calendar yet.
+              </p>
+              <Button onClick={() => router.push('/integrations')}>
+                Go to Integrations
+              </Button>
+            </Card.Content>
+          </Card>
+        ) : events.length === 0 ? (
+          <Card>
+            <Card.Header className="bg-[var(--success)]">
+              <Card.Title>No Events Found</Card.Title>
+            </Card.Header>
+            <Card.Content className="text-center py-12">
+              <Calendar size={64} className="mx-auto mb-4 text-[var(--muted-foreground)]" />
+              <p className="text-[var(--muted-foreground)] mb-6">
+                No calendar events found. Try syncing to fetch your events.
+              </p>
+              <Button onClick={handleSync} disabled={syncing} className="gap-2">
+                <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+                Sync Now
+              </Button>
+            </Card.Content>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {events.map((event) => (
+              <Card key={event.id}>
+                <Card.Header className={event.data.is_all_day ? "bg-[var(--success)]" : "bg-[var(--primary)]"}>
+                  <Card.Title>{event.data.title || "Untitled Event"}</Card.Title>
+                </Card.Header>
+                <Card.Content className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <Clock size={16} className="mt-1 text-[var(--primary)]" />
+                    <div className="flex-1">
+                      <div className="text-sm font-bold">
+                        {formatDateTime(event.data.start_time, event.data.is_all_day)}
                       </div>
+                      {!event.data.is_all_day && (
+                        <div className="text-xs text-[var(--muted-foreground)]">
+                          to {formatDateTime(event.data.end_time, event.data.is_all_day)}
+                        </div>
+                      )}
+                    </div>
+                    {event.data.is_all_day && (
+                      <span className="px-2 py-1 text-xs font-bold bg-[var(--success)] text-white rounded">
+                        All Day
+                      </span>
                     )}
                   </div>
-                  {event.data.is_all_day && (
-                    <span className="px-2 py-1 text-xs font-bold bg-[#95e1d3] text-[#33272a] rounded">
-                      ALL DAY
-                    </span>
+
+                  {event.data.description && (
+                    <div className="text-sm text-[var(--muted-foreground)]">
+                      {event.data.description}
+                    </div>
                   )}
-                </div>
 
-                {event.data.description && (
-                  <div className="text-sm text-[#594a4e]">
-                    {event.data.description}
-                  </div>
-                )}
+                  {event.data.location && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin size={16} className="text-[var(--primary)]" />
+                      <span className="text-[var(--muted-foreground)]">{event.data.location}</span>
+                    </div>
+                  )}
 
-                {event.data.location && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin size={16} className="text-[#ff6b35]" />
-                    <span className="text-[#594a4e]">{event.data.location}</span>
-                  </div>
-                )}
-
-                {event.data.attendees && event.data.attendees.length > 0 && (
-                  <div className="flex items-start gap-2 text-sm">
-                    <Users size={16} className="mt-1 text-[#ff6b35]" />
-                    <div className="flex-1">
-                      <div className="font-bold mb-1">{event.data.attendees.length} Attendees</div>
-                      <div className="text-xs text-[#594a4e]">
-                        {event.data.attendees.slice(0, 3).map((a, i) => (
-                          <div key={i}>
-                            {a.email} - {a.response_status}
-                          </div>
-                        ))}
-                        {event.data.attendees.length > 3 && (
-                          <div>+{event.data.attendees.length - 3} more</div>
-                        )}
+                  {event.data.attendees && event.data.attendees.length > 0 && (
+                    <div className="flex items-start gap-2 text-sm">
+                      <Users size={16} className="mt-1 text-[var(--primary)]" />
+                      <div className="flex-1">
+                        <div className="font-bold mb-1">{event.data.attendees.length} Attendees</div>
+                        <div className="text-xs text-[var(--muted-foreground)]">
+                          {event.data.attendees.slice(0, 3).map((a, i) => (
+                            <div key={i}>
+                              {a.email} - {a.response_status}
+                            </div>
+                          ))}
+                          {event.data.attendees.length > 3 && (
+                            <div>+{event.data.attendees.length - 3} more</div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-2">
-                  {event.data.html_link && (
-                    <a
-                      href={event.data.html_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-[#ff6b35] hover:underline"
-                    >
-                      VIEW IN GOOGLE CALENDAR →
-                    </a>
                   )}
-                </div>
-              </div>
-            </KrilinCardEnhanced>
-          ))}
-        </div>
-      )}
-    </KrilinPageLayout>
+
+                  {event.data.html_link && (
+                    <div className="pt-2">
+                      <a
+                        href={event.data.html_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[var(--primary)] hover:underline"
+                      >
+                        View in Google Calendar →
+                      </a>
+                    </div>
+                  )}
+                </Card.Content>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
   )
 }

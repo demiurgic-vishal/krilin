@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useAuth } from "@/lib/auth/AuthContext"
 import { apiClient } from "@/lib/api/client"
-import KrilinPageLayout from "@/components/krilin-page-layout"
-import KrilinCardEnhanced from "@/components/krilin-card-enhanced"
-import KrilinButtonEnhanced from "@/components/krilin-button-enhanced"
-import { Mail, RefreshCw, User, Calendar } from "lucide-react"
+import { Button } from "@/components/retroui/Button"
+import { Card } from "@/components/retroui/Card"
+import { Mail, RefreshCw, User, Calendar, ArrowLeft } from "lucide-react"
 
 interface Email {
   id: number
@@ -103,144 +103,154 @@ export default function GmailPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fef6e4]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#33272a] font-pixel mb-4">LOADING...</div>
+          <div className="text-3xl font-[var(--font-head)] mb-4 uppercase">Loading...</div>
+          <div className="w-32 h-4 bg-[var(--muted)] mx-auto border-2 border-[var(--border)]">
+            <div className="h-full bg-[var(--primary)] pixel-pulse w-1/2" />
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <KrilinPageLayout
-      title="GMAIL MESSAGES"
-      subtitle="Your synced Gmail emails"
-      showBackButton={true}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Integrations", href: "/integrations" },
-        { label: "Gmail" }
-      ]}
-    >
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-bold text-[#33272a] font-pixel">
-            {emails.length} EMAILS SYNCED
-          </h2>
-        </div>
-        <KrilinButtonEnhanced
-          variant="primary"
-          onClick={handleSync}
-          disabled={syncing || !dataSourceId}
-          className="gap-2"
-        >
-          <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
-          {syncing ? "SYNCING..." : "SYNC NOW"}
-        </KrilinButtonEnhanced>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="text-xl text-[#594a4e]">LOADING EMAILS...</div>
-        </div>
-      ) : !dataSourceId ? (
-        <KrilinCardEnhanced title="NO GMAIL CONNECTED" variant="default" headerColor="#ff6b35">
-          <div className="text-center py-12">
-            <Mail size={64} className="mx-auto mb-4 text-[#594a4e]" />
-            <p className="text-[#594a4e] mb-6">
-              You haven't connected Gmail yet.
-            </p>
-            <KrilinButtonEnhanced
-              variant="primary"
-              onClick={() => router.push('/integrations')}
-            >
-              GO TO INTEGRATIONS
-            </KrilinButtonEnhanced>
+    <div className="min-h-screen bg-[var(--background)]">
+      <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center gap-4">
+            <Link href="/integrations">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft size={24} />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                Gmail Messages
+              </h1>
+              <p className="text-sm text-[var(--muted-foreground)] mt-1">Your synced Gmail emails</p>
+            </div>
           </div>
-        </KrilinCardEnhanced>
-      ) : emails.length === 0 ? (
-        <KrilinCardEnhanced title="NO EMAILS FOUND" variant="default" headerColor="#4ecdc4">
-          <div className="text-center py-12">
-            <Mail size={64} className="mx-auto mb-4 text-[#594a4e]" />
-            <p className="text-[#594a4e] mb-6">
-              No emails found. Try syncing to fetch your messages.
-            </p>
-            <KrilinButtonEnhanced
-              variant="primary"
-              onClick={handleSync}
-              disabled={syncing}
-            >
-              <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
-              SYNC NOW
-            </KrilinButtonEnhanced>
-          </div>
-        </KrilinCardEnhanced>
-      ) : (
-        <div className="space-y-4">
-          {emails.map((email) => (
-            <KrilinCardEnhanced
-              key={email.id}
-              title={email.data.subject || "(No Subject)"}
-              variant="default"
-              headerColor="#ff6b35"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start gap-2">
-                  <User size={16} className="mt-1 text-[#ff6b35] flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold truncate">
-                      {extractName(email.data.from)}
-                    </div>
-                    <div className="text-xs text-[#594a4e] truncate">
-                      {extractEmail(email.data.from)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <Calendar size={16} className="mt-1 text-[#ff6b35] flex-shrink-0" />
-                  <div className="text-sm text-[#594a4e]">
-                    {formatDate(email.data.date)}
-                  </div>
-                </div>
-
-                {email.data.snippet && (
-                  <div className="text-sm text-[#594a4e] bg-[#fef6e4] p-3 rounded border-2 border-[#33272a]">
-                    {email.data.snippet}
-                  </div>
-                )}
-
-                {email.data.body && email.data.body.length > 0 && (
-                  <details className="text-sm">
-                    <summary className="cursor-pointer text-[#ff6b35] font-bold hover:underline">
-                      VIEW FULL MESSAGE
-                    </summary>
-                    <div className="mt-2 text-[#594a4e] whitespace-pre-wrap max-h-96 overflow-y-auto bg-[#fef6e4] p-3 rounded border-2 border-[#33272a]">
-                      {email.data.body}
-                    </div>
-                  </details>
-                )}
-
-                {email.data.labels && email.data.labels.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {email.data.labels
-                      .filter(label => !label.startsWith('CATEGORY_'))
-                      .slice(0, 5)
-                      .map((label, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-1 text-xs font-bold bg-[#95e1d3] text-[#33272a] rounded"
-                        >
-                          {label.replace('LABEL_', '')}
-                        </span>
-                      ))}
-                  </div>
-                )}
-              </div>
-            </KrilinCardEnhanced>
-          ))}
         </div>
-      )}
-    </KrilinPageLayout>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold font-[var(--font-head)] uppercase">
+              {emails.length} Emails Synced
+            </h2>
+          </div>
+          <Button
+            onClick={handleSync}
+            disabled={syncing || !dataSourceId}
+            className="gap-2"
+          >
+            <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Syncing..." : "Sync Now"}
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="text-xl text-[var(--muted-foreground)] uppercase">Loading emails...</div>
+          </div>
+        ) : !dataSourceId ? (
+          <Card>
+            <Card.Header className="bg-[var(--primary)]">
+              <Card.Title>No Gmail Connected</Card.Title>
+            </Card.Header>
+            <Card.Content className="text-center py-12">
+              <Mail size={64} className="mx-auto mb-4 text-[var(--muted-foreground)]" />
+              <p className="text-[var(--muted-foreground)] mb-6">
+                You haven't connected Gmail yet.
+              </p>
+              <Button onClick={() => router.push('/integrations')}>
+                Go to Integrations
+              </Button>
+            </Card.Content>
+          </Card>
+        ) : emails.length === 0 ? (
+          <Card>
+            <Card.Header className="bg-[var(--success)]">
+              <Card.Title>No Emails Found</Card.Title>
+            </Card.Header>
+            <Card.Content className="text-center py-12">
+              <Mail size={64} className="mx-auto mb-4 text-[var(--muted-foreground)]" />
+              <p className="text-[var(--muted-foreground)] mb-6">
+                No emails found. Try syncing to fetch your messages.
+              </p>
+              <Button onClick={handleSync} disabled={syncing} className="gap-2">
+                <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+                Sync Now
+              </Button>
+            </Card.Content>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {emails.map((email) => (
+              <Card key={email.id}>
+                <Card.Header className="bg-[var(--primary)]">
+                  <Card.Title>{email.data.subject || "(No Subject)"}</Card.Title>
+                </Card.Header>
+                <Card.Content className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <User size={16} className="mt-1 text-[var(--primary)] flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold truncate">
+                        {extractName(email.data.from)}
+                      </div>
+                      <div className="text-xs text-[var(--muted-foreground)] truncate">
+                        {extractEmail(email.data.from)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2">
+                    <Calendar size={16} className="mt-1 text-[var(--primary)] flex-shrink-0" />
+                    <div className="text-sm text-[var(--muted-foreground)]">
+                      {formatDate(email.data.date)}
+                    </div>
+                  </div>
+
+                  {email.data.snippet && (
+                    <div className="text-sm text-[var(--muted-foreground)] bg-[var(--muted)] p-3 rounded border-2 border-[var(--border)]">
+                      {email.data.snippet}
+                    </div>
+                  )}
+
+                  {email.data.body && email.data.body.length > 0 && (
+                    <details className="text-sm">
+                      <summary className="cursor-pointer text-[var(--primary)] font-bold hover:underline uppercase">
+                        View Full Message
+                      </summary>
+                      <div className="mt-2 text-[var(--muted-foreground)] whitespace-pre-wrap max-h-96 overflow-y-auto bg-[var(--muted)] p-3 rounded border-2 border-[var(--border)]">
+                        {email.data.body}
+                      </div>
+                    </details>
+                  )}
+
+                  {email.data.labels && email.data.labels.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {email.data.labels
+                        .filter(label => !label.startsWith('CATEGORY_'))
+                        .slice(0, 5)
+                        .map((label, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-1 text-xs font-bold bg-[var(--success)] text-white rounded"
+                          >
+                            {label.replace('LABEL_', '')}
+                          </span>
+                        ))}
+                    </div>
+                  )}
+                </Card.Content>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
   )
 }

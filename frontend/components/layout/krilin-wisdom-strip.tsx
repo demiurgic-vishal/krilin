@@ -475,22 +475,22 @@ export default function KrilinWisdomStrip() {
   };
 
   return (
-    <div 
-      className="bg-[#ffc15e]/10 border-b border-[#ffc15e]/20 py-2 px-4 cursor-pointer transition-all hover:bg-[#ffc15e]/15"
+    <div
+      className="bg-[var(--primary)]/10 border-b-2 border-[var(--border)] py-2 px-4 cursor-pointer transition-all hover:bg-[var(--primary)]/15"
       onClick={handleClick}
       title={isPaused ? "Click to resume rotation" : "Click to pause rotation"}
     >
       <div className="container mx-auto max-w-7xl">
         <div className={`text-center transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-          <span className="font-pixel text-xs text-[#594a4e]">
+          <span className="font-pixel text-xs text-[var(--muted-foreground)]">
             "{currentQuote.text}"
-            <span 
-              className={`citation-link ml-2 text-[10px] ${currentQuote.url ? 'text-[#33272a]/60 hover:text-[#ff6b35] hover:underline cursor-pointer' : 'text-[#33272a]/60'}`}
+            <span
+              className={`citation-link ml-2 text-[10px] ${currentQuote.url ? 'text-[var(--foreground)]/60 hover:text-[var(--primary)] hover:underline cursor-pointer' : 'text-[var(--foreground)]/60'}`}
               title={currentQuote.url ? "Click to view study" : undefined}
             >
               [{currentQuote.citation}]
             </span>
-            {isPaused && <span className="ml-2 text-[#ff6b35] text-[10px]">(PAUSED)</span>}
+            {isPaused && <span className="ml-2 text-[var(--destructive)] text-[10px]">(PAUSED)</span>}
           </span>
         </div>
       </div>

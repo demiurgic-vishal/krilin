@@ -1,8 +1,9 @@
 "use client"
 
 import { Suspense, useState } from "react"
-import KrilinPageLayout from "@/components/krilin-page-layout"
-import KrilinButtonEnhanced from "@/components/krilin-button-enhanced"
+import Link from "next/link"
+import { Button } from "@/components/retroui/Button"
+import { ArrowLeft } from "lucide-react"
 import KrilinMoodTracker from "@/components/gamification/krilin-mood-tracker"
 import KrilinGratitudeJournal from "@/components/gamification/krilin-gratitude-journal"
 import KrilinMindfulness from "@/components/gamification/krilin-mindfulness"
@@ -22,57 +23,64 @@ export default function WellnessPage() {
   >('mood')
 
   const tabs = [
-    { key: 'mood', label: 'MOOD TRACKER' },
-    { key: 'gratitude', label: 'GRATITUDE JOURNAL' },
-    { key: 'mindfulness', label: 'MINDFULNESS MEDITATION' },
-    { key: 'sleep', label: 'SLEEP QUALITY' },
-    { key: 'habits', label: 'WELLNESS HABITS' },
+    { key: 'mood', label: 'Mood Tracker' },
+    { key: 'gratitude', label: 'Gratitude Journal' },
+    { key: 'mindfulness', label: 'Mindfulness Meditation' },
+    { key: 'sleep', label: 'Sleep Quality' },
+    { key: 'habits', label: 'Wellness Habits' },
   ] as const
 
   return (
-    <KrilinPageLayout
-      title="MENTAL WELLNESS CENTER"
-      subtitle="Research-backed tools to improve your mental wellbeing and build resilience."
-      showBackButton={true}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Wellness" }
-      ]}
-      footerSubtitle="TAKE CARE OF YOUR MIND"
-      headerContent={
-        <p className="text-center text-[#ff6b35] font-pixel text-sm">
-          "Even warriors need to train their minds, not just their bodies." - Krillin
-        </p>
-      }
-      containerSize="full"
-    >
-      {/* Tab Navigation */}
-      <div className="flex flex-wrap justify-center gap-4 mb-8">
-        {tabs.map((tab, index) => (
-          <KrilinButtonEnhanced
-            key={tab.key}
-            variant={activeTab === tab.key ? "primary" : "secondary"}
-            onClick={() => setActiveTab(tab.key as typeof activeTab)}
-          >
-            {tab.label}
-          </KrilinButtonEnhanced>
-        ))}
-      </div>
+    <div className="min-h-screen bg-[var(--background)]">
+      <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft size={24} />
+              </Button>
+            </Link>
+            <div className="flex-1">
+              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                Mental Wellness Center
+              </h1>
+              <p className="text-sm text-[var(--muted-foreground)] mt-1">Research-backed tools to improve your mental wellbeing and build resilience.</p>
+              <p className="text-center text-[var(--primary)] font-[var(--font-head)] text-sm mt-2">
+                "Even warriors need to train their minds, not just their bodies." - Krillin
+              </p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Tab Navigation */}
+        <div className="flex flex-wrap justify-center gap-4 mb-8">
+          {tabs.map((tab, index) => (
+            <Button
+              key={tab.key}
+              variant={activeTab === tab.key ? "default" : "secondary"}
+              onClick={() => setActiveTab(tab.key as typeof activeTab)}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
       
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        <div className="lg:col-span-4">
-          {/* Scientific Validation Banner */}
-          <div className="bg-[#fff8e8] border-2 border-[#ffc15e] p-4 mb-8 text-center">
-              <h2 className="font-pixel text-lg text-[#33272a] mb-2">🧠 SCIENTIFICALLY VALIDATED TOOLS</h2>
-              <p className="font-pixel text-sm text-[#594a4e]">
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-4">
+            {/* Scientific Validation Banner */}
+            <div className="bg-[var(--muted)] border-2 border-[var(--border)] p-4 mb-8 text-center shadow-[4px_4px_0_0_var(--border)]">
+              <h2 className="font-[var(--font-head)] text-lg mb-2 uppercase">Scientifically Validated Tools</h2>
+              <p className="text-sm text-[var(--muted-foreground)]">
                 All tools in the Wellness Center are based on peer-reviewed research in psychology, neuroscience, and behavioral science.
                 Consistent use of these features can significantly improve mental health outcomes and overall wellbeing.
               </p>
-          </div>
+            </div>
           
-          {/* Tab Content */}
-          <div>
+            {/* Tab Content */}
+            <div>
               <Suspense fallback={
                 <div className="flex items-center justify-center h-96">
                   <PixelLoader variant="spinner" size="lg" text="Loading..." />
@@ -84,8 +92,8 @@ export default function WellnessPage() {
                 {activeTab === 'sleep' && <KrilinSleepQuality />}
                 {activeTab === 'habits' && <KrilinHabitTracker />}
               </Suspense>
+            </div>
           </div>
-        </div>
         
         {/* Sidebar with Contextual Wisdom Quotes */}
         <div className="lg:col-span-1">
@@ -176,7 +184,8 @@ export default function WellnessPage() {
               )}
           </div>
         </div>
-      </div>
-    </KrilinPageLayout>
+        </div>
+      </main>
+    </div>
   )
 }

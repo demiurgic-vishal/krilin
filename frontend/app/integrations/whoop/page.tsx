@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useAuth } from "@/lib/auth/AuthContext"
 import { useDataSources } from "@/lib/hooks/useDataSources"
 import { apiClient } from "@/lib/api/client"
-import KrilinPageLayout from "@/components/krilin-page-layout"
-import KrilinCardEnhanced from "@/components/krilin-card-enhanced"
-import KrilinButtonEnhanced from "@/components/krilin-button-enhanced"
-import { Activity, RefreshCw, TrendingUp, Moon, Zap, Calendar } from "lucide-react"
+import { Button } from "@/components/retroui/Button"
+import { Card } from "@/components/retroui/Card"
+import { Activity, RefreshCw, TrendingUp, Moon, Zap, Calendar, ArrowLeft } from "lucide-react"
 
 interface WhoopRecord {
   id: number
@@ -20,7 +20,6 @@ interface WhoopRecord {
   updated_at: string
 }
 
-// Whoop sport ID mapping - based on Whoop API documentation
 const WHOOP_SPORT_NAMES: Record<number, string> = {
   [-1]: 'Auto-Detected Activity',
   0: 'Activity',
@@ -110,7 +109,7 @@ export default function WhoopDataPage() {
     try {
       await apiClient.triggerSync(whoopSource.id, true)
       await refetchSources()
-      setTimeout(fetchRecords, 2000) // Wait for sync to complete
+      setTimeout(fetchRecords, 2000)
       alert('Sync started!')
     } catch (error: any) {
       alert(`Sync failed: ${error.message}`)
@@ -121,9 +120,12 @@ export default function WhoopDataPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fef6e4]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#33272a] font-pixel mb-4">LOADING...</div>
+          <div className="text-3xl font-[var(--font-head)] mb-4 uppercase">Loading...</div>
+          <div className="w-32 h-4 bg-[var(--muted)] mx-auto border-2 border-[var(--border)]">
+            <div className="h-full bg-[var(--primary)] pixel-pulse w-1/2" />
+          </div>
         </div>
       </div>
     )
@@ -131,31 +133,42 @@ export default function WhoopDataPage() {
 
   if (!whoopSource) {
     return (
-      <KrilinPageLayout
-        title="WHOOP DATA"
-        subtitle="Your fitness metrics"
-        showBackButton={true}
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Integrations", href: "/integrations" },
-          { label: "Whoop" }
-        ]}
-      >
-        <KrilinCardEnhanced title="NOT CONNECTED" variant="default" headerColor="#ff6b35">
-          <div className="text-center py-12">
-            <Activity size={64} className="mx-auto mb-4 text-[#594a4e]" />
-            <p className="text-[#594a4e] mb-6">
-              You haven't connected your Whoop account yet. Connect it to track your recovery, sleep, and workouts!
-            </p>
-            <KrilinButtonEnhanced
-              variant="primary"
-              onClick={() => router.push('/integrations')}
-            >
-              CONNECT WHOOP
-            </KrilinButtonEnhanced>
+      <div className="min-h-screen bg-[var(--background)]">
+        <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center gap-4">
+              <Link href="/integrations">
+                <Button variant="ghost" size="icon">
+                  <ArrowLeft size={24} />
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                  Whoop Data
+                </h1>
+                <p className="text-sm text-[var(--muted-foreground)] mt-1">Your fitness metrics</p>
+              </div>
+            </div>
           </div>
-        </KrilinCardEnhanced>
-      </KrilinPageLayout>
+        </header>
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <Card>
+            <Card.Header className="bg-[var(--primary)]">
+              <Card.Title>Not Connected</Card.Title>
+            </Card.Header>
+            <Card.Content className="text-center py-12">
+              <Activity size={64} className="mx-auto mb-4 text-[var(--muted-foreground)]" />
+              <p className="text-[var(--muted-foreground)] mb-6">
+                You haven't connected your Whoop account yet. Connect it to track your recovery, sleep, and workouts!
+              </p>
+              <Button onClick={() => router.push('/integrations')}>
+                Connect Whoop
+              </Button>
+            </Card.Content>
+          </Card>
+        </main>
+      </div>
     )
   }
 
@@ -165,308 +178,305 @@ export default function WhoopDataPage() {
   const cycleRecords = records.filter(r => r.record_type === 'whoop_cycle')
 
   return (
-    <KrilinPageLayout
-      title="WHOOP DATA"
-      subtitle="Your fitness metrics"
-      showBackButton={true}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Integrations", href: "/integrations" },
-        { label: "Whoop" }
-      ]}
-    >
-      <div className="mb-6 flex justify-between items-center">
-        <div className="text-sm text-[#594a4e]">
-          {whoopSource.last_sync_at && (
-            <>Last synced: {new Date(whoopSource.last_sync_at).toLocaleString()}</>
-          )}
+    <div className="min-h-screen bg-[var(--background)]">
+      <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center gap-4">
+            <Link href="/integrations">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft size={24} />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                Whoop Data
+              </h1>
+              <p className="text-sm text-[var(--muted-foreground)] mt-1">Your fitness metrics</p>
+            </div>
+          </div>
         </div>
-        <KrilinButtonEnhanced
-          variant="secondary"
-          className="gap-2"
-          onClick={handleSync}
-          disabled={syncing}
-        >
-          <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-          {syncing ? 'SYNCING...' : 'SYNC NOW'}
-        </KrilinButtonEnhanced>
-      </div>
+      </header>
 
-      <div className="grid md:grid-cols-4 gap-4 mb-8">
-        <KrilinCardEnhanced title="RECOVERY" variant="default" headerColor="#4ecdc4">
-          <div className="text-center py-4">
-            <div className="text-4xl font-bold text-[#33272a]">{recoveryRecords.length}</div>
-            <div className="text-sm text-[#594a4e]">RECORDS</div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-6 flex justify-between items-center">
+          <div className="text-sm text-[var(--muted-foreground)]">
+            {whoopSource.last_sync_at && (
+              <>Last synced: {new Date(whoopSource.last_sync_at).toLocaleString()}</>
+            )}
           </div>
-        </KrilinCardEnhanced>
-
-        <KrilinCardEnhanced title="SLEEP" variant="default" headerColor="#95e1d3">
-          <div className="text-center py-4">
-            <div className="text-4xl font-bold text-[#33272a]">{sleepRecords.length}</div>
-            <div className="text-sm text-[#594a4e]">RECORDS</div>
-          </div>
-        </KrilinCardEnhanced>
-
-        <KrilinCardEnhanced title="WORKOUTS" variant="default" headerColor="#ff6b35">
-          <div className="text-center py-4">
-            <div className="text-4xl font-bold text-[#33272a]">{workoutRecords.length}</div>
-            <div className="text-sm text-[#594a4e]">RECORDS</div>
-          </div>
-        </KrilinCardEnhanced>
-
-        <KrilinCardEnhanced title="CYCLES" variant="default" headerColor="#ffc15e">
-          <div className="text-center py-4">
-            <div className="text-4xl font-bold text-[#33272a]">{cycleRecords.length}</div>
-            <div className="text-sm text-[#594a4e]">RECORDS</div>
-          </div>
-        </KrilinCardEnhanced>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="text-xl text-[#594a4e]">LOADING WHOOP DATA...</div>
+          <Button
+            variant="secondary"
+            className="gap-2"
+            onClick={handleSync}
+            disabled={syncing}
+          >
+            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing...' : 'Sync Now'}
+          </Button>
         </div>
-      ) : records.length === 0 ? (
-        <KrilinCardEnhanced title="NO DATA YET" variant="default" headerColor="#ff6b35">
+
+        <div className="grid md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <Card.Header className="bg-[var(--success)]">
+              <Card.Title>Recovery</Card.Title>
+            </Card.Header>
+            <Card.Content className="text-center py-4">
+              <div className="text-4xl font-bold">{recoveryRecords.length}</div>
+              <div className="text-sm text-[var(--muted-foreground)] uppercase">Records</div>
+            </Card.Content>
+          </Card>
+
+          <Card>
+            <Card.Header className="bg-[var(--info)]">
+              <Card.Title>Sleep</Card.Title>
+            </Card.Header>
+            <Card.Content className="text-center py-4">
+              <div className="text-4xl font-bold">{sleepRecords.length}</div>
+              <div className="text-sm text-[var(--muted-foreground)] uppercase">Records</div>
+            </Card.Content>
+          </Card>
+
+          <Card>
+            <Card.Header className="bg-[var(--primary)]">
+              <Card.Title>Workouts</Card.Title>
+            </Card.Header>
+            <Card.Content className="text-center py-4">
+              <div className="text-4xl font-bold">{workoutRecords.length}</div>
+              <div className="text-sm text-[var(--muted-foreground)] uppercase">Records</div>
+            </Card.Content>
+          </Card>
+
+          <Card>
+            <Card.Header className="bg-[var(--warning)]">
+              <Card.Title>Cycles</Card.Title>
+            </Card.Header>
+            <Card.Content className="text-center py-4">
+              <div className="text-4xl font-bold">{cycleRecords.length}</div>
+              <div className="text-sm text-[var(--muted-foreground)] uppercase">Records</div>
+            </Card.Content>
+          </Card>
+        </div>
+
+        {loading ? (
           <div className="text-center py-12">
-            <Activity size={64} className="mx-auto mb-4 text-[#594a4e]" />
-            <p className="text-[#594a4e] mb-6">
-              No Whoop data found. Click "SYNC NOW" to fetch your latest metrics!
-            </p>
+            <div className="text-xl text-[var(--muted-foreground)] uppercase">Loading Whoop data...</div>
           </div>
-        </KrilinCardEnhanced>
-      ) : (
-        <div className="space-y-8">
-          {recoveryRecords.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#33272a] font-pixel mb-4 flex items-center gap-2">
-                <TrendingUp size={24} />
-                RECOVERY
-              </h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                {recoveryRecords.map((record) => (
-                  <KrilinCardEnhanced
-                    key={record.id}
-                    title={new Date(record.record_date).toLocaleDateString()}
-                    variant="default"
-                    headerColor="#4ecdc4"
-                  >
-                    <div className="space-y-2">
-                      {record.data.score && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Recovery Score:</span>
-                          <span className="text-sm">{record.data.score.recovery_score || 'N/A'}%</span>
-                        </div>
-                      )}
-                      {record.data.score?.resting_heart_rate && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Resting HR:</span>
-                          <span className="text-sm">{record.data.score.resting_heart_rate} bpm</span>
-                        </div>
-                      )}
-                      {record.data.score?.hrv_rmssd_milli && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">HRV:</span>
-                          <span className="text-sm">{record.data.score.hrv_rmssd_milli} ms</span>
-                        </div>
-                      )}
-                    </div>
-                  </KrilinCardEnhanced>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {sleepRecords.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#33272a] font-pixel mb-4 flex items-center gap-2">
-                <Moon size={24} />
-                SLEEP
-              </h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                {sleepRecords.map((record) => (
-                  <KrilinCardEnhanced
-                    key={record.id}
-                    title={new Date(record.record_date).toLocaleDateString()}
-                    variant="default"
-                    headerColor="#95e1d3"
-                  >
-                    <div className="space-y-2">
-                      <div className="text-xs text-[#594a4e] mb-2">
-                        {new Date(record.data.start).toLocaleString()} - {new Date(record.data.end).toLocaleTimeString()}
-                      </div>
-
-                      {record.data.score?.sleep_performance_percentage !== undefined && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Sleep Performance:</span>
-                          <span className="text-sm">{record.data.score.sleep_performance_percentage}%</span>
-                        </div>
-                      )}
-
-                      {record.data.score?.sleep_efficiency_percentage !== undefined && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Sleep Efficiency:</span>
-                          <span className="text-sm">{Math.round(record.data.score.sleep_efficiency_percentage)}%</span>
-                        </div>
-                      )}
-
-                      {record.data.score?.stage_summary?.total_in_bed_time_milli && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Time in Bed:</span>
-                          <span className="text-sm">{Math.round(record.data.score.stage_summary.total_in_bed_time_milli / 1000 / 60 / 60 * 10) / 10}h</span>
-                        </div>
-                      )}
-
-                      {record.data.score?.stage_summary?.total_awake_time_milli && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Awake Time:</span>
-                          <span className="text-sm">{Math.round(record.data.score.stage_summary.total_awake_time_milli / 1000 / 60)}m</span>
-                        </div>
-                      )}
-
-                      {record.data.score?.stage_summary?.total_rem_sleep_time_milli && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">REM Sleep:</span>
-                          <span className="text-sm">{Math.round(record.data.score.stage_summary.total_rem_sleep_time_milli / 1000 / 60)}m</span>
-                        </div>
-                      )}
-
-                      {record.data.score?.stage_summary?.total_slow_wave_sleep_time_milli && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Deep Sleep:</span>
-                          <span className="text-sm">{Math.round(record.data.score.stage_summary.total_slow_wave_sleep_time_milli / 1000 / 60)}m</span>
-                        </div>
-                      )}
-
-                      {record.data.score?.respiratory_rate && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Respiratory Rate:</span>
-                          <span className="text-sm">{Math.round(record.data.score.respiratory_rate * 10) / 10} bpm</span>
-                        </div>
-                      )}
-                    </div>
-                  </KrilinCardEnhanced>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {workoutRecords.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#33272a] font-pixel mb-4 flex items-center gap-2">
-                <Zap size={24} />
-                WORKOUTS
-              </h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                {workoutRecords.map((record) => {
-                  const sportName = record.data.sport_id !== undefined ? getSportName(record.data.sport_id) : 'Workout'
-                  const duration = record.data.start && record.data.end
-                    ? Math.round((new Date(record.data.end).getTime() - new Date(record.data.start).getTime()) / 1000 / 60)
-                    : null
-
-                  return (
-                    <KrilinCardEnhanced
-                      key={record.id}
-                      title={sportName}
-                      variant="default"
-                      headerColor="#ff6b35"
-                    >
-                      <div className="space-y-2">
-                        <div className="text-xs text-[#594a4e] mb-2">
-                          {new Date(record.data.start).toLocaleString()}
-                          {duration && ` • ${duration} min`}
-                        </div>
-
-                        {record.data.score?.strain !== undefined && (
+        ) : records.length === 0 ? (
+          <Card>
+            <Card.Header className="bg-[var(--primary)]">
+              <Card.Title>No Data Yet</Card.Title>
+            </Card.Header>
+            <Card.Content className="text-center py-12">
+              <Activity size={64} className="mx-auto mb-4 text-[var(--muted-foreground)]" />
+              <p className="text-[var(--muted-foreground)] mb-6">
+                No Whoop data found. Click "Sync Now" to fetch your latest metrics!
+              </p>
+            </Card.Content>
+          </Card>
+        ) : (
+          <div className="space-y-8">
+            {recoveryRecords.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold font-[var(--font-head)] mb-4 flex items-center gap-2 uppercase">
+                  <TrendingUp size={24} />
+                  Recovery
+                </h2>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {recoveryRecords.map((record) => (
+                    <Card key={record.id}>
+                      <Card.Header className="bg-[var(--success)]">
+                        <Card.Title>{new Date(record.record_date).toLocaleDateString()}</Card.Title>
+                      </Card.Header>
+                      <Card.Content className="space-y-2">
+                        {record.data.score && (
                           <div className="flex justify-between">
-                            <span className="text-sm font-bold">Strain:</span>
-                            <span className="text-sm">{Math.round(record.data.score.strain * 10) / 10}</span>
+                            <span className="text-sm font-bold">Recovery Score:</span>
+                            <span className="text-sm">{record.data.score.recovery_score || 'N/A'}%</span>
+                          </div>
+                        )}
+                        {record.data.score?.resting_heart_rate && (
+                          <div className="flex justify-between">
+                            <span className="text-sm font-bold">Resting HR:</span>
+                            <span className="text-sm">{record.data.score.resting_heart_rate} bpm</span>
+                          </div>
+                        )}
+                        {record.data.score?.hrv_rmssd_milli && (
+                          <div className="flex justify-between">
+                            <span className="text-sm font-bold">HRV:</span>
+                            <span className="text-sm">{record.data.score.hrv_rmssd_milli} ms</span>
+                          </div>
+                        )}
+                      </Card.Content>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sleepRecords.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold font-[var(--font-head)] mb-4 flex items-center gap-2 uppercase">
+                  <Moon size={24} />
+                  Sleep
+                </h2>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {sleepRecords.map((record) => (
+                    <Card key={record.id}>
+                      <Card.Header className="bg-[var(--info)]">
+                        <Card.Title>{new Date(record.record_date).toLocaleDateString()}</Card.Title>
+                      </Card.Header>
+                      <Card.Content className="space-y-2">
+                        <div className="text-xs text-[var(--muted-foreground)] mb-2">
+                          {new Date(record.data.start).toLocaleString()} - {new Date(record.data.end).toLocaleTimeString()}
+                        </div>
+
+                        {record.data.score?.sleep_performance_percentage !== undefined && (
+                          <div className="flex justify-between">
+                            <span className="text-sm font-bold">Sleep Performance:</span>
+                            <span className="text-sm">{record.data.score.sleep_performance_percentage}%</span>
                           </div>
                         )}
 
+                        {record.data.score?.sleep_efficiency_percentage !== undefined && (
+                          <div className="flex justify-between">
+                            <span className="text-sm font-bold">Sleep Efficiency:</span>
+                            <span className="text-sm">{Math.round(record.data.score.sleep_efficiency_percentage)}%</span>
+                          </div>
+                        )}
+
+                        {record.data.score?.stage_summary?.total_in_bed_time_milli && (
+                          <div className="flex justify-between">
+                            <span className="text-sm font-bold">Time in Bed:</span>
+                            <span className="text-sm">{Math.round(record.data.score.stage_summary.total_in_bed_time_milli / 1000 / 60 / 60 * 10) / 10}h</span>
+                          </div>
+                        )}
+
+                        {record.data.score?.stage_summary?.total_rem_sleep_time_milli && (
+                          <div className="flex justify-between">
+                            <span className="text-sm font-bold">REM Sleep:</span>
+                            <span className="text-sm">{Math.round(record.data.score.stage_summary.total_rem_sleep_time_milli / 1000 / 60)}m</span>
+                          </div>
+                        )}
+
+                        {record.data.score?.stage_summary?.total_slow_wave_sleep_time_milli && (
+                          <div className="flex justify-between">
+                            <span className="text-sm font-bold">Deep Sleep:</span>
+                            <span className="text-sm">{Math.round(record.data.score.stage_summary.total_slow_wave_sleep_time_milli / 1000 / 60)}m</span>
+                          </div>
+                        )}
+                      </Card.Content>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {workoutRecords.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold font-[var(--font-head)] mb-4 flex items-center gap-2 uppercase">
+                  <Zap size={24} />
+                  Workouts
+                </h2>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {workoutRecords.map((record) => {
+                    const sportName = record.data.sport_id !== undefined ? getSportName(record.data.sport_id) : 'Workout'
+                    const duration = record.data.start && record.data.end
+                      ? Math.round((new Date(record.data.end).getTime() - new Date(record.data.start).getTime()) / 1000 / 60)
+                      : null
+
+                    return (
+                      <Card key={record.id}>
+                        <Card.Header className="bg-[var(--primary)]">
+                          <Card.Title>{sportName}</Card.Title>
+                        </Card.Header>
+                        <Card.Content className="space-y-2">
+                          <div className="text-xs text-[var(--muted-foreground)] mb-2">
+                            {new Date(record.data.start).toLocaleString()}
+                            {duration && ` • ${duration} min`}
+                          </div>
+
+                          {record.data.score?.strain !== undefined && (
+                            <div className="flex justify-between">
+                              <span className="text-sm font-bold">Strain:</span>
+                              <span className="text-sm">{Math.round(record.data.score.strain * 10) / 10}</span>
+                            </div>
+                          )}
+
+                          {record.data.score?.average_heart_rate && (
+                            <div className="flex justify-between">
+                              <span className="text-sm font-bold">Avg HR:</span>
+                              <span className="text-sm">{record.data.score.average_heart_rate} bpm</span>
+                            </div>
+                          )}
+
+                          {record.data.score?.max_heart_rate && (
+                            <div className="flex justify-between">
+                              <span className="text-sm font-bold">Max HR:</span>
+                              <span className="text-sm">{record.data.score.max_heart_rate} bpm</span>
+                            </div>
+                          )}
+
+                          {record.data.score?.kilojoule && (
+                            <div className="flex justify-between">
+                              <span className="text-sm font-bold">Calories:</span>
+                              <span className="text-sm">{Math.round(record.data.score.kilojoule / 4.184)} kcal</span>
+                            </div>
+                          )}
+
+                          {record.data.score?.distance_meter && (
+                            <div className="flex justify-between">
+                              <span className="text-sm font-bold">Distance:</span>
+                              <span className="text-sm">{(record.data.score.distance_meter / 1000).toFixed(2)} km</span>
+                            </div>
+                          )}
+                        </Card.Content>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {cycleRecords.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold font-[var(--font-head)] mb-4 flex items-center gap-2 uppercase">
+                  <Calendar size={24} />
+                  Cycles
+                </h2>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {cycleRecords.map((record) => (
+                    <Card key={record.id}>
+                      <Card.Header className="bg-[var(--warning)]">
+                        <Card.Title>{new Date(record.record_date).toLocaleDateString()}</Card.Title>
+                      </Card.Header>
+                      <Card.Content className="space-y-2">
+                        {record.data.score?.strain && (
+                          <div className="flex justify-between">
+                            <span className="text-sm font-bold">Strain:</span>
+                            <span className="text-sm">{record.data.score.strain}</span>
+                          </div>
+                        )}
+                        {record.data.score?.kilojoule && (
+                          <div className="flex justify-between">
+                            <span className="text-sm font-bold">Energy:</span>
+                            <span className="text-sm">{Math.round(record.data.score.kilojoule / 4.184)} kcal</span>
+                          </div>
+                        )}
                         {record.data.score?.average_heart_rate && (
                           <div className="flex justify-between">
                             <span className="text-sm font-bold">Avg HR:</span>
                             <span className="text-sm">{record.data.score.average_heart_rate} bpm</span>
                           </div>
                         )}
-
-                        {record.data.score?.max_heart_rate && (
-                          <div className="flex justify-between">
-                            <span className="text-sm font-bold">Max HR:</span>
-                            <span className="text-sm">{record.data.score.max_heart_rate} bpm</span>
-                          </div>
-                        )}
-
-                        {record.data.score?.kilojoule && (
-                          <div className="flex justify-between">
-                            <span className="text-sm font-bold">Calories:</span>
-                            <span className="text-sm">{Math.round(record.data.score.kilojoule / 4.184)} kcal</span>
-                          </div>
-                        )}
-
-                        {record.data.score?.distance_meter && (
-                          <div className="flex justify-between">
-                            <span className="text-sm font-bold">Distance:</span>
-                            <span className="text-sm">{(record.data.score.distance_meter / 1000).toFixed(2)} km</span>
-                          </div>
-                        )}
-
-                        {record.data.score?.altitude_gain_meter && (
-                          <div className="flex justify-between">
-                            <span className="text-sm font-bold">Elevation Gain:</span>
-                            <span className="text-sm">{Math.round(record.data.score.altitude_gain_meter)} m</span>
-                          </div>
-                        )}
-                      </div>
-                    </KrilinCardEnhanced>
-                  )
-                })}
+                      </Card.Content>
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-
-          {cycleRecords.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#33272a] font-pixel mb-4 flex items-center gap-2">
-                <Calendar size={24} />
-                CYCLES
-              </h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                {cycleRecords.map((record) => (
-                  <KrilinCardEnhanced
-                    key={record.id}
-                    title={new Date(record.record_date).toLocaleDateString()}
-                    variant="default"
-                    headerColor="#ffc15e"
-                  >
-                    <div className="space-y-2">
-                      {record.data.score?.strain && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Strain:</span>
-                          <span className="text-sm">{record.data.score.strain}</span>
-                        </div>
-                      )}
-                      {record.data.score?.kilojoule && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Energy:</span>
-                          <span className="text-sm">{Math.round(record.data.score.kilojoule / 4.184)} kcal</span>
-                        </div>
-                      )}
-                      {record.data.score?.average_heart_rate && (
-                        <div className="flex justify-between">
-                          <span className="text-sm font-bold">Avg HR:</span>
-                          <span className="text-sm">{record.data.score.average_heart_rate} bpm</span>
-                        </div>
-                      )}
-                    </div>
-                  </KrilinCardEnhanced>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </KrilinPageLayout>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
   )
 }

@@ -23,15 +23,15 @@ export default function EnhancedKrilinHeader() {
   const pathname = usePathname()
 
   return (
-    <header className="bg-[#594a4e] border-b-2 border-[#33272a] relative z-50">
+    <header className="bg-[var(--secondary)] border-b-2 border-[var(--border)] relative z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 py-2">
           {/* Logo Section */}
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <KrilinLogo className="w-8 h-8 flex-shrink-0" />
-            <div className="font-pixel text-white">
+            <div className="font-pixel text-[var(--secondary-foreground)]">
               <h1 className="text-lg tracking-wider leading-tight">KRILIN.AI</h1>
-              <p className="text-[10px] text-[#ffc15e] leading-tight">LEVEL UP MIND & MATTER</p>
+              <p className="text-[10px] text-[var(--primary)] leading-tight">LEVEL UP MIND & MATTER</p>
             </div>
           </Link>
 
@@ -42,10 +42,10 @@ export default function EnhancedKrilinHeader() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "font-pixel text-sm transition-colors px-3 py-2 rounded",
+                  "font-pixel text-sm transition-all px-3 py-2 border-2 border-transparent",
                   pathname === item.href
-                    ? "text-[#ffc15e] bg-[#33272a] shadow-lg"
-                    : "text-white hover:text-[#ffc15e] hover:bg-[#33272a]/20"
+                    ? "text-[var(--primary-foreground)] bg-[var(--primary)] border-[var(--border)] shadow-sm"
+                    : "text-[var(--secondary-foreground)] hover:text-[var(--primary-foreground)] hover:bg-[var(--primary)] hover:border-[var(--border)] hover:shadow-sm"
                 )}
               >
                 {item.label}
@@ -56,7 +56,7 @@ export default function EnhancedKrilinHeader() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 text-white hover:text-[#ffc15e] transition-colors"
+            className="lg:hidden p-2 text-[var(--secondary-foreground)] hover:text-[var(--primary)] transition-colors"
             aria-label="Toggle mobile menu"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -72,9 +72,9 @@ export default function EnhancedKrilinHeader() {
             className="fixed inset-0 bg-black/50 lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
-          
+
           {/* Menu Panel */}
-          <div className="absolute top-full left-0 right-0 bg-[#594a4e] border-b-2 border-[#33272a] lg:hidden">
+          <div className="absolute top-full left-0 right-0 bg-[var(--secondary)] border-b-2 border-[var(--border)] lg:hidden shadow-lg">
             <nav className="container mx-auto px-4 py-4">
               <div className="flex flex-col space-y-2">
                 {navItems.map((item) => (
@@ -83,10 +83,10 @@ export default function EnhancedKrilinHeader() {
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      "font-pixel text-sm transition-colors px-4 py-3 rounded block",
+                      "font-pixel text-sm transition-all px-4 py-3 border-2 border-transparent block",
                       pathname === item.href
-                        ? "text-[#ffc15e] bg-[#33272a] shadow-lg"
-                        : "text-white hover:text-[#ffc15e] hover:bg-[#33272a]/20"
+                        ? "text-[var(--primary-foreground)] bg-[var(--primary)] border-[var(--border)] shadow-sm"
+                        : "text-[var(--secondary-foreground)] hover:text-[var(--primary-foreground)] hover:bg-[var(--primary)] hover:border-[var(--border)] hover:shadow-sm"
                     )}
                   >
                     {item.label}

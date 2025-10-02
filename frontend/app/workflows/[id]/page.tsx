@@ -5,10 +5,9 @@ import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth/AuthContext"
 import { useWorkflow, useWorkflowExecutions, useUpdateWorkflow, useDeleteWorkflow, useExecuteWorkflow } from "@/lib/hooks/useWorkflows"
-import KrilinPageLayout from "@/components/krilin-page-layout"
-import KrilinCardEnhanced from "@/components/krilin-card-enhanced"
-import KrilinButtonEnhanced from "@/components/krilin-button-enhanced"
-import { Zap, PlayCircle, Edit, Trash2, Clock, CheckCircle, XCircle } from "lucide-react"
+import { Button } from "@/components/retroui/Button"
+import { Card } from "@/components/retroui/Card"
+import { Zap, PlayCircle, Edit, Trash2, Clock, CheckCircle, XCircle, ArrowLeft } from "lucide-react"
 
 export default function WorkflowDetailPage() {
   const router = useRouter()
@@ -29,9 +28,12 @@ export default function WorkflowDetailPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fef6e4]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#33272a] font-pixel mb-4">LOADING...</div>
+          <div className="text-3xl font-[var(--font-head)] mb-4 uppercase">Loading...</div>
+          <div className="w-32 h-4 bg-[var(--muted)] mx-auto border-2 border-[var(--border)]">
+            <div className="h-full bg-[var(--primary)] pixel-pulse w-1/2" />
+          </div>
         </div>
       </div>
     )
@@ -39,24 +41,24 @@ export default function WorkflowDetailPage() {
 
   if (workflowLoading) {
     return (
-      <KrilinPageLayout title="LOADING WORKFLOW...">
+      <div className="min-h-screen bg-[var(--background)]">
         <div className="text-center py-12">
-          <div className="text-xl text-[#594a4e]">LOADING WORKFLOW DETAILS...</div>
+          <div className="text-xl text-[var(--muted-foreground)]">Loading workflow details...</div>
         </div>
-      </KrilinPageLayout>
+      </div>
     )
   }
 
   if (!workflow) {
     return (
-      <KrilinPageLayout title="WORKFLOW NOT FOUND">
+      <div className="min-h-screen bg-[var(--background)]">
         <div className="text-center py-12">
-          <p className="text-[#594a4e] mb-6">This workflow could not be found.</p>
+          <p className="text-[var(--muted-foreground)] mb-6">This workflow could not be found.</p>
           <Link href="/workflows">
-            <KrilinButtonEnhanced variant="primary">BACK TO WORKFLOWS</KrilinButtonEnhanced>
+            <Button>Back to Workflows</Button>
           </Link>
         </div>
-      </KrilinPageLayout>
+      </div>
     )
   }
 
@@ -90,79 +92,121 @@ export default function WorkflowDetailPage() {
   }
 
   return (
-    <KrilinPageLayout title={workflow.name} showBackButton={true} breadcrumbs={[{ label: "Home", href: "/" }, { label: "Workflows", href: "/workflows" }, { label: workflow.name }]}>
-      <div className="space-y-6">
-        <KrilinCardEnhanced title="WORKFLOW DETAILS" variant="default" headerColor={workflow.is_active ? '#4ecdc4' : '#95e1d3'}>
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-2 items-center mb-4">
-              <span className={`px-3 py-1 text-xs font-bold ${workflow.is_active ? 'bg-[#4ecdc4] text-white' : 'bg-[#95e1d3] text-[#33272a]'}`}>{workflow.is_active ? 'ACTIVE' : 'INACTIVE'}</span>
-            </div>
-            {workflow.description && (
-              <div>
-                <span className="font-bold">DESCRIPTION</span>
-                <p className="text-sm text-[#594a4e] mt-2">{workflow.description}</p>
-              </div>
-            )}
-            <div className="flex items-center gap-2 text-sm">
-              <Clock size={16} />
-              <span>Created: {new Date(workflow.created_at).toLocaleDateString()}</span>
-            </div>
-            {workflow.last_run_at && (
-              <div className="flex items-center gap-2 text-sm">
-                <CheckCircle size={16} />
-                <span>Last run: {new Date(workflow.last_run_at).toLocaleString()}</span>
-              </div>
-            )}
-            <div className="pt-4 border-t-2 border-[#33272a]/20 flex flex-wrap gap-2">
-              <KrilinButtonEnhanced variant="primary" onClick={handleExecute} disabled={executing} className="gap-2"><PlayCircle size={16} />{executing ? 'RUNNING...' : 'RUN NOW'}</KrilinButtonEnhanced>
-              <KrilinButtonEnhanced variant="secondary" onClick={handleToggleActive} disabled={updating} className="gap-2">{workflow.is_active ? 'DEACTIVATE' : 'ACTIVATE'}</KrilinButtonEnhanced>
-              <KrilinButtonEnhanced variant="secondary" onClick={handleDelete} disabled={deleting} className="gap-2 bg-red-100 hover:bg-red-200 text-red-700"><Trash2 size={16} />{deleting ? 'DELETING...' : 'DELETE'}</KrilinButtonEnhanced>
-            </div>
+    <div className="min-h-screen bg-[var(--background)]">
+      <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center gap-4">
+            <Link href="/workflows">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft size={24} />
+              </Button>
+            </Link>
+            <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+              {workflow.name}
+            </h1>
           </div>
-        </KrilinCardEnhanced>
+        </div>
+      </header>
 
-        <KrilinCardEnhanced title="WORKFLOW STEPS" variant="default" headerColor="#ff6b35">
-          {workflow.steps && workflow.steps.length > 0 ? (
-            <div className="space-y-2">
-              {workflow.steps.map((step: any, idx: number) => (
-                <div key={idx} className="p-3 bg-[#fef6e4] border-2 border-[#33272a]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-bold">STEP {idx + 1}:</span>
-                    <span>{step.action || step.type}</span>
-                  </div>
-                  {step.parameters && Object.keys(step.parameters).length > 0 && (
-                    <div className="text-xs font-mono bg-white p-2 border border-[#33272a] mt-2">
-                      {JSON.stringify(step.parameters, null, 2)}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="space-y-6">
+          <Card>
+            <Card.Header className={workflow.is_active ? "bg-[var(--success)]" : "bg-[var(--muted)]"}>
+              <Card.Title>Workflow Details</Card.Title>
+            </Card.Header>
+            <Card.Content className="space-y-4">
+              <div className="flex flex-wrap gap-2 items-center mb-4">
+                <span className={`px-3 py-1 text-xs font-bold border-2 border-[var(--border)] ${workflow.is_active ? 'bg-[var(--success)] text-[var(--success-foreground)]' : 'bg-[var(--muted)] text-[var(--foreground)]'}`}>
+                  {workflow.is_active ? 'ACTIVE' : 'INACTIVE'}
+                </span>
+              </div>
+              {workflow.description && (
+                <div>
+                  <span className="font-bold uppercase">Description</span>
+                  <p className="text-sm text-[var(--muted-foreground)] mt-2">{workflow.description}</p>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-sm">
+                <Clock size={16} />
+                <span>Created: {new Date(workflow.created_at).toLocaleDateString()}</span>
+              </div>
+              {workflow.last_run_at && (
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle size={16} />
+                  <span>Last run: {new Date(workflow.last_run_at).toLocaleString()}</span>
+                </div>
+              )}
+              <div className="pt-4 border-t-2 border-[var(--border)]/20 flex flex-wrap gap-2">
+                <Button onClick={handleExecute} disabled={executing}>
+                  <PlayCircle size={16} className="mr-2" />
+                  {executing ? 'Running...' : 'Run Now'}
+                </Button>
+                <Button variant="secondary" onClick={handleToggleActive} disabled={updating}>
+                  {workflow.is_active ? 'Deactivate' : 'Activate'}
+                </Button>
+                <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                  <Trash2 size={16} className="mr-2" />
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </Card.Content>
+          </Card>
+
+          <Card>
+            <Card.Header className="bg-[var(--primary)]">
+              <Card.Title>Workflow Steps</Card.Title>
+            </Card.Header>
+            <Card.Content>
+              {workflow.steps && workflow.steps.length > 0 ? (
+                <div className="space-y-2">
+                  {workflow.steps.map((step: any, idx: number) => (
+                    <div key={idx} className="p-3 bg-[var(--muted)] border-2 border-[var(--border)]">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-bold uppercase">Step {idx + 1}:</span>
+                        <span>{step.action || step.type}</span>
+                      </div>
+                      {step.parameters && Object.keys(step.parameters).length > 0 && (
+                        <div className="text-xs font-mono bg-[var(--background)] p-2 border border-[var(--border)] mt-2">
+                          {JSON.stringify(step.parameters, null, 2)}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[#594a4e]">No steps defined.</p>
-          )}
-        </KrilinCardEnhanced>
+              ) : (
+                <p className="text-sm text-[var(--muted-foreground)]">No steps defined.</p>
+              )}
+            </Card.Content>
+          </Card>
 
-        <KrilinCardEnhanced title="EXECUTION HISTORY" variant="default" headerColor="#ffc15e">
-          {executionsLoading ? (
-            <div className="text-center py-4 text-sm">Loading executions...</div>
-          ) : executions.length === 0 ? (
-            <div className="text-center py-8 text-sm text-[#594a4e]">No executions yet. Run this workflow to see results here!</div>
-          ) : (
-            <div className="space-y-2">
-              {executions.map((execution: any) => (
-                <div key={execution.id} className="p-3 bg-[#fef6e4] border border-[#33272a]">
-                  <div className="flex justify-between mb-2">
-                    <span className={`px-2 py-1 text-xs font-bold ${execution.status === 'success' ? 'bg-green-200' : execution.status === 'failed' ? 'bg-red-200' : 'bg-yellow-200'}`}>{execution.status.toUpperCase()}</span>
-                    <span className="text-xs">{new Date(execution.started_at).toLocaleString()}</span>
-                  </div>
-                  {execution.error_message && <p className="text-xs text-red-600">{execution.error_message}</p>}
+          <Card>
+            <Card.Header className="bg-[var(--accent)]">
+              <Card.Title>Execution History</Card.Title>
+            </Card.Header>
+            <Card.Content>
+              {executionsLoading ? (
+                <div className="text-center py-4 text-sm">Loading executions...</div>
+              ) : executions.length === 0 ? (
+                <div className="text-center py-8 text-sm text-[var(--muted-foreground)]">No executions yet. Run this workflow to see results here!</div>
+              ) : (
+                <div className="space-y-2">
+                  {executions.map((execution: any) => (
+                    <div key={execution.id} className="p-3 bg-[var(--muted)] border border-[var(--border)]">
+                      <div className="flex justify-between mb-2">
+                        <span className={`px-2 py-1 text-xs font-bold border-2 border-[var(--border)] ${execution.status === 'success' ? 'bg-[var(--success)] text-[var(--success-foreground)]' : execution.status === 'failed' ? 'bg-[var(--destructive)] text-[var(--destructive-foreground)]' : 'bg-[var(--warning)] text-[var(--warning-foreground)]'}`}>
+                          {execution.status.toUpperCase()}
+                        </span>
+                        <span className="text-xs">{new Date(execution.started_at).toLocaleString()}</span>
+                      </div>
+                      {execution.error_message && <p className="text-xs text-[var(--destructive)]">{execution.error_message}</p>}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </KrilinCardEnhanced>
-      </div>
-    </KrilinPageLayout>
+              )}
+            </Card.Content>
+          </Card>
+        </div>
+      </main>
+    </div>
   )
 }

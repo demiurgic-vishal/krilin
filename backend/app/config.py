@@ -58,8 +58,9 @@ class Settings(BaseSettings):
     )
     
     # AI Models
-    openai_api_key: str = Field(..., description="OpenAI API key for Pydantic AI")
-    default_model: str = "gpt-4o"
+    openai_api_key: str = Field(default="", description="OpenAI API key (optional, not used)")
+    anthropic_api_key: str = Field(..., description="Anthropic API key for both Pydantic AI and Claude Agent SDK")
+    default_model: str = "claude-sonnet-4-5"
     
     # External APIs
     google_client_id: str = Field(default="", description="Google OAuth client ID")

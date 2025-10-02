@@ -20,10 +20,19 @@ async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
     await init_db()
-    
+
+    # Start session manager cleanup task
+    from app.services.session_manager import get_session_manager
+    session_manager = get_session_manager()
+    await session_manager.start_cleanup_task()
+
     yield
-    
+
     # Shutdown
+    # Clean up all active Claude SDK sessions
+    from app.services.session_manager import cleanup_session_manager
+    await cleanup_session_manager()
+
     await close_db()
 
 

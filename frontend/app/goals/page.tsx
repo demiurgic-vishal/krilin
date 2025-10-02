@@ -5,11 +5,9 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth/AuthContext"
 import { useGoals } from "@/lib/hooks/useGoals"
-import KrilinPageLayout from "@/components/krilin-page-layout"
-import KrilinCardEnhanced from "@/components/krilin-card-enhanced"
-import KrilinButtonEnhanced from "@/components/krilin-button-enhanced"
-import KrilinPowerMeter from "@/components/krilin-power-meter"
-import { Plus, Target, TrendingUp, CheckCircle, Clock } from "lucide-react"
+import { Button } from "@/components/retroui/Button"
+import { Card } from "@/components/retroui/Card"
+import { Plus, Target, TrendingUp, CheckCircle, Clock, Home } from "lucide-react"
 
 export default function GoalsPage() {
   const router = useRouter()
@@ -19,7 +17,6 @@ export default function GoalsPage() {
     filter === 'all' ? {} : { status: filter }
   )
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth/login')
@@ -28,9 +25,12 @@ export default function GoalsPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fef6e4]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#33272a] font-pixel mb-4">LOADING...</div>
+          <div className="text-3xl font-[var(--font-head)] mb-4 uppercase">Loading...</div>
+          <div className="w-32 h-4 bg-[var(--muted)] mx-auto border-2 border-[var(--border)]">
+            <div className="h-full bg-[var(--primary)] pixel-pulse w-1/2" />
+          </div>
         </div>
       </div>
     )
@@ -38,7 +38,6 @@ export default function GoalsPage() {
 
   const activeGoals = goals.filter(g => g.status === 'active')
   const completedGoals = goals.filter(g => g.status === 'completed')
-  const pendingGoals = goals.filter(g => g.status === 'pending')
 
   const displayedGoals = filter === 'all'
     ? goals
@@ -47,213 +46,188 @@ export default function GoalsPage() {
     : completedGoals
 
   return (
-    <KrilinPageLayout
-      title="GOAL TRAINING CENTER"
-      subtitle="Track your journey to power level 9000!"
-      showBackButton={true}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Goals" }
-      ]}
-    >
-      {/* Stats Overview */}
-      <div className="grid md:grid-cols-4 gap-4 mb-8">
-        <KrilinCardEnhanced title="TOTAL" variant="default" headerColor="#ff6b35">
-          <div className="text-center py-4">
-            <div className="text-4xl font-bold text-[#33272a]">{goals.length}</div>
-            <div className="text-sm text-[#594a4e]">GOALS</div>
-          </div>
-        </KrilinCardEnhanced>
-
-        <KrilinCardEnhanced title="ACTIVE" variant="default" headerColor="#4ecdc4">
-          <div className="text-center py-4">
-            <div className="text-4xl font-bold text-[#33272a]">{activeGoals.length}</div>
-            <div className="text-sm text-[#594a4e]">IN PROGRESS</div>
-          </div>
-        </KrilinCardEnhanced>
-
-        <KrilinCardEnhanced title="COMPLETED" variant="default" headerColor="#95e1d3">
-          <div className="text-center py-4">
-            <div className="text-4xl font-bold text-[#33272a]">{completedGoals.length}</div>
-            <div className="text-sm text-[#594a4e]">ACHIEVED</div>
-          </div>
-        </KrilinCardEnhanced>
-
-        <KrilinCardEnhanced title="SUCCESS RATE" variant="default" headerColor="#ffc15e">
-          <div className="text-center py-4">
-            <div className="text-4xl font-bold text-[#33272a]">
-              {goals.length > 0 ? Math.round((completedGoals.length / goals.length) * 100) : 0}%
+    <div className="min-h-screen bg-[var(--background)]">
+      <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <Link href="/">
+                <Button variant="ghost" size="icon">
+                  <Home size={24} />
+                </Button>
+              </Link>
+              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                Goals
+              </h1>
             </div>
-            <div className="text-sm text-[#594a4e]">COMPLETION</div>
-          </div>
-        </KrilinCardEnhanced>
-      </div>
-
-      {/* Actions Bar */}
-      <div className="flex flex-wrap gap-4 mb-8 items-center justify-between">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 font-bold border-2 border-[#33272a] transition-colors ${
-              filter === 'all'
-                ? 'bg-[#ff6b35] text-white'
-                : 'bg-white text-[#33272a] hover:bg-[#fef6e4]'
-            }`}
-          >
-            ALL
-          </button>
-          <button
-            onClick={() => setFilter('active')}
-            className={`px-4 py-2 font-bold border-2 border-[#33272a] transition-colors ${
-              filter === 'active'
-                ? 'bg-[#4ecdc4] text-white'
-                : 'bg-white text-[#33272a] hover:bg-[#fef6e4]'
-            }`}
-          >
-            ACTIVE
-          </button>
-          <button
-            onClick={() => setFilter('completed')}
-            className={`px-4 py-2 font-bold border-2 border-[#33272a] transition-colors ${
-              filter === 'completed'
-                ? 'bg-[#95e1d3] text-white'
-                : 'bg-white text-[#33272a] hover:bg-[#fef6e4]'
-            }`}
-          >
-            COMPLETED
-          </button>
-        </div>
-
-        <Link href="/goals/new">
-          <KrilinButtonEnhanced variant="primary" className="gap-2">
-            <Plus size={20} />
-            CREATE NEW GOAL
-          </KrilinButtonEnhanced>
-        </Link>
-      </div>
-
-      {/* Goals List */}
-      {goalsLoading ? (
-        <div className="text-center py-12">
-          <div className="text-xl text-[#594a4e]">LOADING GOALS...</div>
-        </div>
-      ) : displayedGoals.length === 0 ? (
-        <KrilinCardEnhanced title="NO GOALS FOUND" variant="default" headerColor="#ff6b35">
-          <div className="text-center py-12">
-            <Target size={64} className="mx-auto mb-4 text-[#594a4e]" />
-            <p className="text-[#594a4e] mb-6">
-              {filter === 'all'
-                ? "You haven't created any goals yet. Start your training!"
-                : `No ${filter} goals found. Try a different filter.`}
-            </p>
             <Link href="/goals/new">
-              <KrilinButtonEnhanced variant="primary" className="gap-2">
-                <Plus size={20} />
-                CREATE YOUR FIRST GOAL
-              </KrilinButtonEnhanced>
+              <Button size="sm">
+                <Plus size={16} className="mr-2" />
+                New Goal
+              </Button>
             </Link>
           </div>
-        </KrilinCardEnhanced>
-      ) : (
-        <div className="grid gap-6">
-          {displayedGoals.map((goal) => (
-            <Link href={`/goals/${goal.id}`} key={goal.id}>
-              <KrilinCardEnhanced
-                title={goal.title}
-                variant="default"
-                headerColor={
-                  goal.status === 'completed'
-                    ? '#95e1d3'
-                    : goal.priority >= 8
-                    ? '#ff6b35'
-                    : '#4ecdc4'
-                }
-              >
-                <div className="space-y-4">
-                  {/* Goal Info */}
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <span className="px-3 py-1 bg-[#33272a] text-white text-xs font-bold">
-                      {goal.category.toUpperCase()}
-                    </span>
-                    <span
-                      className={`px-3 py-1 text-xs font-bold ${
-                        goal.priority >= 8
-                          ? 'bg-[#ff6b35] text-white'
-                          : goal.priority >= 5
-                          ? 'bg-[#ffc15e] text-[#33272a]'
-                          : 'bg-[#95e1d3] text-[#33272a]'
-                      }`}
-                    >
-                      {goal.priority >= 8 ? 'HIGH' : goal.priority >= 5 ? 'MEDIUM' : 'LOW'} PRIORITY
-                    </span>
-                    {goal.status === 'completed' && (
-                      <span className="px-3 py-1 bg-[#95e1d3] text-[#33272a] text-xs font-bold flex items-center gap-1">
-                        <CheckCircle size={12} />
-                        COMPLETED
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Description */}
-                  {goal.description && (
-                    <p className="text-sm text-[#594a4e]">{goal.description}</p>
-                  )}
-
-                  {/* Progress */}
-                  <div>
-                    <div className="flex justify-between mb-2 text-sm">
-                      <span>PROGRESS</span>
-                      <span className="font-bold">{goal.current_progress}%</span>
-                    </div>
-                    <KrilinPowerMeter value={goal.current_progress} label="" />
-                  </div>
-
-                  {/* Metadata */}
-                  <div className="flex flex-wrap gap-4 text-xs text-[#594a4e]">
-                    {goal.target_date && (
-                      <div className="flex items-center gap-1">
-                        <Clock size={12} />
-                        <span>Target: {new Date(goal.target_date).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                    {goal.created_by_agent && (
-                      <div className="flex items-center gap-1">
-                        <TrendingUp size={12} />
-                        <span>Created by: {goal.created_by_agent}</span>
-                      </div>
-                    )}
-                    <div>
-                      Created: {new Date(goal.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-
-                  {/* Resources Preview */}
-                  {goal.resources && goal.resources.length > 0 && (
-                    <div className="pt-2 border-t-2 border-[#33272a]/20">
-                      <div className="text-xs font-bold mb-1">RESOURCES AVAILABLE:</div>
-                      <div className="flex gap-1 flex-wrap">
-                        {goal.resources.slice(0, 3).map((resource: any, idx: number) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-1 bg-[#fef6e4] border border-[#33272a] text-xs"
-                          >
-                            {resource.title || resource.name || `Resource ${idx + 1}`}
-                          </span>
-                        ))}
-                        {goal.resources.length > 3 && (
-                          <span className="px-2 py-1 text-xs text-[#594a4e]">
-                            +{goal.resources.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </KrilinCardEnhanced>
-            </Link>
-          ))}
         </div>
-      )}
-    </KrilinPageLayout>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          <div className="border-2 border-[var(--border)] bg-[var(--primary)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-4xl font-bold mb-1">{goals.length}</div>
+                <div className="text-sm uppercase font-medium">Total</div>
+              </div>
+              <Target size={48} className="opacity-50" />
+            </div>
+          </div>
+
+          <div className="border-2 border-[var(--border)] bg-[var(--success)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-4xl font-bold mb-1">{activeGoals.length}</div>
+                <div className="text-sm uppercase font-medium">Active</div>
+              </div>
+              <TrendingUp size={48} className="opacity-50" />
+            </div>
+          </div>
+
+          <div className="border-2 border-[var(--border)] bg-[var(--info)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-4xl font-bold mb-1">{completedGoals.length}</div>
+                <div className="text-sm uppercase font-medium">Completed</div>
+              </div>
+              <CheckCircle size={48} className="opacity-50" />
+            </div>
+          </div>
+
+          <div className="border-2 border-[var(--border)] bg-[var(--accent)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-4xl font-bold mb-1">
+                  {goals.length > 0 ? Math.round((completedGoals.length / goals.length) * 100) : 0}%
+                </div>
+                <div className="text-sm uppercase font-medium">Success</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mb-8">
+          <Button
+            onClick={() => setFilter('all')}
+            variant={filter === 'all' ? 'default' : 'outline'}
+            size="sm"
+          >
+            All
+          </Button>
+          <Button
+            onClick={() => setFilter('active')}
+            variant={filter === 'active' ? 'success' : 'outline'}
+            size="sm"
+          >
+            Active
+          </Button>
+          <Button
+            onClick={() => setFilter('completed')}
+            variant={filter === 'completed' ? 'info' : 'outline'}
+            size="sm"
+          >
+            Completed
+          </Button>
+        </div>
+
+        {goalsLoading ? (
+          <div className="text-center py-12">
+            <div className="text-xl text-[var(--muted-foreground)]">Loading goals...</div>
+          </div>
+        ) : displayedGoals.length === 0 ? (
+          <Card>
+            <Card.Content className="py-16">
+              <div className="text-center">
+                <Target size={64} className="mx-auto mb-4 text-[var(--muted-foreground)]" />
+                <h3 className="text-xl font-bold mb-2">No Goals Found</h3>
+                <p className="text-[var(--muted-foreground)] mb-6">
+                  {filter === 'all'
+                    ? "You haven't created any goals yet. Get started!"
+                    : `No ${filter} goals found. Try a different filter.`}
+                </p>
+                <Link href="/goals/new">
+                  <Button>
+                    <Plus size={20} className="mr-2" />
+                    Create Your First Goal
+                  </Button>
+                </Link>
+              </div>
+            </Card.Content>
+          </Card>
+        ) : (
+          <div className="grid gap-6">
+            {displayedGoals.map((goal) => (
+              <Link href={`/goals/${goal.id}`} key={goal.id}>
+                <Card className="transition-all hover:shadow-[8px_8px_0_0_var(--border)] hover:translate-x-[-4px] hover:translate-y-[-4px] cursor-pointer">
+                  <Card.Header className={goal.status === 'completed' ? 'bg-[var(--info)]' : 'bg-[var(--primary)]'}>
+                    <div className="flex justify-between items-start">
+                      <Card.Title>{goal.title}</Card.Title>
+                      {goal.status === 'completed' && (
+                        <CheckCircle size={24} />
+                      )}
+                    </div>
+                  </Card.Header>
+                  <Card.Content className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 bg-[var(--secondary)] text-[var(--secondary-foreground)] text-xs font-bold uppercase border-2 border-[var(--border)]">
+                        {goal.category}
+                      </span>
+                      <span
+                        className={`px-3 py-1 text-xs font-bold uppercase border-2 border-[var(--border)] ${
+                          goal.priority >= 8
+                            ? 'bg-[var(--destructive)] text-[var(--destructive-foreground)]'
+                            : goal.priority >= 5
+                            ? 'bg-[var(--warning)] text-[var(--warning-foreground)]'
+                            : 'bg-[var(--success)] text-[var(--success-foreground)]'
+                        }`}
+                      >
+                        {goal.priority >= 8 ? 'High' : goal.priority >= 5 ? 'Med' : 'Low'} Priority
+                      </span>
+                    </div>
+
+                    {goal.description && (
+                      <p className="text-sm text-[var(--muted-foreground)]">{goal.description}</p>
+                    )}
+
+                    <div>
+                      <div className="flex justify-between mb-2 text-sm font-bold">
+                        <span className="uppercase">Progress</span>
+                        <span>{goal.current_progress}%</span>
+                      </div>
+                      <div className="h-4 bg-[var(--muted)] border-2 border-[var(--border)]">
+                        <div
+                          className="h-full bg-[var(--success)] transition-all"
+                          style={{ width: `${goal.current_progress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 text-xs text-[var(--muted-foreground)]">
+                      {goal.target_date && (
+                        <div className="flex items-center gap-1">
+                          <Clock size={12} />
+                          <span>Due: {new Date(goal.target_date).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                      <div>
+                        Created: {new Date(goal.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </Card.Content>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
   )
 }

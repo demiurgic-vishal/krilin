@@ -39,8 +39,9 @@ class BaseKrilinAgent:
 
     def __init__(self, agent_name: str, system_prompt: str):
         self.agent_name = agent_name
+        # Use Anthropic Claude for all Pydantic AI agents
         self.agent = Agent(
-            'openai:gpt-4',
+            'anthropic:claude-sonnet-4-5-20250929',  # Claude Sonnet 4.5
             system_prompt=system_prompt,
         )
     
@@ -64,14 +65,17 @@ class BaseKrilinAgent:
         # Run the agent with context
         result = await self.agent.run(message)
 
+        # Access result - pydantic-ai 1.0+ uses .output instead of .data
+        response_content = result.output if hasattr(result, 'output') else result.data
+
         return AgentResponse(
-            content=result.data,
+            content=str(response_content),
             metadata={
                 "agent_name": self.agent_name,
-                "model_used": "gpt-4"
+                "model_used": "claude-sonnet-4-5"
             },
-            prompt_tokens=result.usage().request_tokens if result.usage() else None,
-            completion_tokens=result.usage().response_tokens if result.usage() else None
+            prompt_tokens=result.usage().request_tokens if hasattr(result, 'usage') and callable(result.usage) and result.usage() else None,
+            completion_tokens=result.usage().response_tokens if hasattr(result, 'usage') and callable(result.usage) and result.usage() else None
         )
     
     async def process_goal_message(
@@ -107,15 +111,18 @@ class BaseKrilinAgent:
 
         result = await self.agent.run(enhanced_prompt)
 
+        # Access result - pydantic-ai 1.0+ uses .output instead of .data
+        response_content = result.output if hasattr(result, 'output') else result.data
+
         return AgentResponse(
-            content=result.data,
+            content=str(response_content),
             metadata={
                 "agent_name": self.agent_name,
-                "model_used": "gpt-4",
+                "model_used": "claude-sonnet-4-5",
                 "is_goal_response": True
             },
-            prompt_tokens=result.usage().request_tokens if result.usage() else None,
-            completion_tokens=result.usage().response_tokens if result.usage() else None
+            prompt_tokens=result.usage().request_tokens if hasattr(result, 'usage') and callable(result.usage) and result.usage() else None,
+            completion_tokens=result.usage().response_tokens if hasattr(result, 'usage') and callable(result.usage) and result.usage() else None
         )
     
     def _build_message_history(self, recent_messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -123,28 +130,92 @@ class BaseKrilinAgent:
         return recent_messages[-10:]  # Keep last 10 messages
 
 
+class GeneralAssistant(BaseKrilinAgent):
+    """General purpose AI assistant for questions and conversations."""
+
+    def __init__(self):
+        system_prompt = """You are Krillin, a friendly and helpful AI assistant.
+
+        You help users with:
+        - Answering general questions
+        - Having conversations
+        - Providing information and explanations
+        - Offering advice and guidance
+
+        You're knowledgeable, supportive, and always eager to help.
+        Use a warm, encouraging tone inspired by Dragon Ball Z's Krillin -
+        humble, loyal, and always ready to support your friends.
+        """
+
+        super().__init__("General Assistant", system_prompt)
+
+
 class CodingAgent(BaseKrilinAgent):
-    """AI agent for coding and workflow creation."""
-    
+    """
+    Hybrid Coding Agent that routes to Claude Agent SDK for execution tasks.
+
+    This agent:
+    - Uses Pydantic AI for planning and conversation
+    - Delegates to Claude Agent SDK for actual code execution
+    """
+
     def __init__(self):
         system_prompt = """You are Krillin's Coding Agent, specialized in creating custom workflows and automation.
-        
+
         You help users by:
         - Creating personalized automation workflows
         - Writing code for data integration
         - Building productivity systems
         - Setting up organizational tools
-        
+
         When users say things like "I want to be more organized", you create specific workflows that:
         - Connect to their email/calendar for deadline tracking
         - Set up todo systems
         - Create reminder schedules
         - Automate repetitive tasks
-        
+
         Always provide practical, implementable solutions with clear steps.
         Use Krillin's encouraging and supportive tone."""
-        
+
         super().__init__("Coding Agent", system_prompt)
+
+    async def execute_code_task(
+        self,
+        task: str,
+        context: Dict[str, Any]
+    ) -> AgentResponse:
+        """
+        Execute actual coding/automation tasks using Claude Agent SDK.
+
+        Args:
+            task: Coding task to execute
+            context: User context
+
+        Returns:
+            AgentResponse: Execution results
+        """
+        from app.services.claude_coding_agent import get_claude_coding_agent
+
+        # Get Claude coding agent
+        claude_agent = get_claude_coding_agent()
+
+        # Execute the task with real terminal/file access
+        result = await claude_agent.execute_task(task, context)
+
+        # Convert Claude response to AgentResponse format
+        return AgentResponse(
+            content=result.content,
+            metadata={
+                **result.metadata,
+                "tools_used": result.tools_used,
+                "files_created": result.files_created,
+                "files_modified": result.files_modified,
+                "commands_executed": result.commands_executed,
+                "execution_success": result.execution_success,
+            },
+            prompt_tokens=None,  # Claude SDK doesn't expose these separately
+            completion_tokens=None,
+        )
 
 
 class FinanceAgent(BaseKrilinAgent):
@@ -233,6 +304,7 @@ class ShoppingAgent(BaseKrilinAgent):
 
 # Agent registry
 _agents: Dict[AgentType, BaseKrilinAgent] = {
+    "general_assistant": GeneralAssistant(),
     "coding": CodingAgent(),
     "finance": FinanceAgent(),
     "health": HealthAgent(),

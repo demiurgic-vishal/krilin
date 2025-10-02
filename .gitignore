@@ -212,3 +212,6 @@ logs/
 # Docker volumes (if local)
 postgres-data/
 redis-data/
+
+# Retro UI Stuff
+retro/

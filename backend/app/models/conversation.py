@@ -12,7 +12,7 @@ from app.database import Base
 
 
 MessageRole = Literal["user", "assistant", "system"]
-AgentType = Literal["coding", "finance", "health", "research", "shopping"]
+AgentType = Literal["general_assistant", "coding", "finance", "health", "research", "shopping"]
 
 
 class Conversation(Base):

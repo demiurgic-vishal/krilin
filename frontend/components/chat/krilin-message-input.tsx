@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState } from "react"
-import KrilinButton from "@/components/krilin-button"
+import { Button } from "@/components/retroui/Button"
+import { Textarea } from "@/components/retroui/Textarea"
 import { cn } from "@/lib/utils"
 import { SendHorizonal, Mic, Paperclip, Sparkles } from "lucide-react"
 
@@ -46,57 +47,60 @@ export default function KrilinMessageInput({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex items-end gap-2">
-        <textarea
+        <Textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Enter your message..."
-          className="flex-1 min-h-[60px] max-h-[200px] resize-none border-4 border-[#33272a] bg-white p-2 focus:outline-none"
+          className="flex-1 min-h-[60px] max-h-[200px] resize-none"
           disabled={isLoading}
         />
 
         <div className="flex flex-col gap-2">
           {onFileUpload && (
             <>
-              <KrilinButton
+              <Button
                 variant="secondary"
+                size="icon"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
                 className="h-10 w-10 p-0 flex items-center justify-center"
               >
                 <Paperclip size={18} />
-              </KrilinButton>
+              </Button>
 
               <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
             </>
           )}
 
           {onVoiceInput && (
-            <KrilinButton
+            <Button
               variant="secondary"
+              size="icon"
               onClick={onVoiceInput}
               disabled={isLoading}
               className="h-10 w-10 p-0 flex items-center justify-center"
             >
               <Mic size={18} />
-            </KrilinButton>
+            </Button>
           )}
 
-          <KrilinButton
+          <Button
             onClick={handleSend}
             disabled={!message.trim() || isLoading}
+            size="icon"
             className="h-10 w-10 p-0 flex items-center justify-center"
           >
             <SendHorizonal size={18} />
-          </KrilinButton>
+          </Button>
         </div>
       </div>
 
       <div className="flex justify-center">
-        <KrilinButton variant="secondary" className="text-xs gap-1.5">
+        <Button variant="secondary" className="text-xs gap-1.5">
           <Sparkles size={12} />
           POWER COMMANDS
-        </KrilinButton>
+        </Button>
       </div>
     </div>
   )

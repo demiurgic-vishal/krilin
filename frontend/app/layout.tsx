@@ -1,11 +1,25 @@
 import type { Metadata } from 'next'
+import { Space_Grotesk, Archivo_Black } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/lib/auth/AuthContext'
 
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
+  display: 'swap',
+})
+
+const archivoBlack = Archivo_Black({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-head',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
-  title: 'KRILIN.AI - Your Power-Up Sidekick',
-  description: 'Level up your productivity and wellness with Krilin.AI - your personal AI assistant with Dragon Ball Z flair',
-  generator: 'Krilin.AI',
+  title: 'KRILIN - Retro AI Productivity',
+  description: 'Your retro-styled AI productivity companion',
   icons: {
     icon: '/krilin_logo.png',
     shortcut: '/krilin_logo.png',
@@ -19,15 +33,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="bg-[#fffaeb] font-pixel">
+    <html lang="en" className={`${spaceGrotesk.variable} ${archivoBlack.variable}`}>
+      <body className="antialiased">
         <AuthProvider>
-          <div className="min-h-screen relative">
-            <div className="fixed inset-0 pointer-events-none z-50 opacity-30">
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10" />
-            </div>
-            {children}
-          </div>
+          {children}
         </AuthProvider>
       </body>
     </html>

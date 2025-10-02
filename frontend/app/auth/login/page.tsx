@@ -3,10 +3,9 @@
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
-import KrilinButton from '@/components/krilin-button'
-import KrilinCard from '@/components/krilin-card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Button } from '@/components/retroui/Button'
+import { Card } from '@/components/retroui/Card'
+import { Input } from '@/components/retroui/Input'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -23,70 +22,69 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fef6e4] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-[#33272a] font-pixel mb-2">KRILIN AI</h1>
-          <p className="text-[#594a4e]">YOUR POWER-UP SIDEKICK</p>
+          <h1 className="text-5xl font-[var(--font-head)] mb-2 uppercase tracking-wider">KRILIN AI</h1>
+          <p className="text-[var(--muted-foreground)] uppercase tracking-wide">Your Power-Up Sidekick</p>
         </div>
 
-        <KrilinCard>
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#33272a] font-pixel mb-6">LOG IN</h2>
-
+        <Card>
+          <Card.Header className="bg-[var(--primary)]">
+            <Card.Title>Log In</Card.Title>
+          </Card.Header>
+          <Card.Content className="p-6 space-y-4">
             {error && (
-              <div className="mb-4 p-3 bg-red-100 border-2 border-red-400 text-red-700 rounded">
+              <div className="p-3 bg-[var(--danger)] border-2 border-[var(--border)] text-white shadow-[2px_2px_0_0_var(--border)]">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="email" className="text-[#33272a] font-bold">EMAIL</Label>
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-bold uppercase tracking-wide">Email</label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="mt-1 border-2 border-[#33272a]"
                   placeholder="your@email.com"
                   disabled={loading}
                 />
               </div>
 
-              <div>
-                <Label htmlFor="password" className="text-[#33272a] font-bold">PASSWORD</Label>
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-bold uppercase tracking-wide">Password</label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="mt-1 border-2 border-[#33272a]"
                   placeholder="••••••••"
                   disabled={loading}
                 />
               </div>
 
-              <KrilinButton type="submit" className="w-full" disabled={loading}>
-                {loading ? 'LOGGING IN...' : 'LOG IN'}
-              </KrilinButton>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Logging In...' : 'Log In'}
+              </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-[#594a4e]">
-                DON'T HAVE AN ACCOUNT?{' '}
-                <Link href="/auth/signup" className="text-[#ff6b35] font-bold hover:underline">
-                  SIGN UP
+            <div className="mt-6 text-center pt-4 border-t-2 border-[var(--border)]">
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Don't have an account?{' '}
+                <Link href="/auth/signup" className="text-[var(--primary)] font-bold hover:underline uppercase">
+                  Sign Up
                 </Link>
               </p>
             </div>
-          </div>
-        </KrilinCard>
+          </Card.Content>
+        </Card>
 
-        <div className="mt-4 text-center text-sm text-[#594a4e]">
-          <p>REMEMBER: SIZE DOESN'T DETERMINE STRENGTH!</p>
+        <div className="mt-4 text-center text-sm text-[var(--muted-foreground)]">
+          <p className="uppercase tracking-wide">Remember: Size Doesn't Determine Strength!</p>
         </div>
       </div>
     </div>

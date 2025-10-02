@@ -2,69 +2,65 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useAuth } from "@/lib/auth/AuthContext"
-import { useSendMessage, useConversations } from "@/lib/hooks/useChat"
-import KrilinPageLayout from "@/components/krilin-page-layout"
-import KrilinChatContainer from "@/components/chat/krilin-chat-container"
-import KrilinMessageBubble from "@/components/chat/krilin-message-bubble"
-import KrilinMessageInput from "@/components/chat/krilin-message-input"
-import { PixelLoader } from "@/components/ui/pixel-loader"
+import { useStreamingMessage, useConversations } from "@/lib/hooks/useChat"
+import { Button } from "@/components/retroui/Button"
+import { Card } from "@/components/retroui/Card"
+import { Input } from "@/components/retroui/Input"
+import { Home, Plus, MessageSquare, Send } from "lucide-react"
 
 export default function ChatPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const { conversations, loading: conversationsLoading, refetch } = useConversations({ limit: 1 })
-  const { sendMessage, loading: sendingMessage } = useSendMessage()
-  
+  const { conversations, loading: conversationsLoading, refetch } = useConversations({ limit: 20 })
+  const { sendStreamingMessage, loading: sendingMessage } = useStreamingMessage()
+
   const [messages, setMessages] = useState<Array<{
     role: 'user' | 'assistant'
     content: string
     timestamp: string
   }>>([])
   const [conversationId, setConversationId] = useState<number | null>(null)
+  const [showSidebar, setShowSidebar] = useState(false)
+  const [inputMessage, setInputMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth/login')
     }
   }, [user, authLoading, router])
 
-  // Load most recent conversation
   useEffect(() => {
     if (conversations.length > 0 && !conversationId) {
-      const latestConvo = conversations[0]
-      setConversationId(latestConvo.id)
-      
-      // Load messages from conversation
-      if (latestConvo.messages && latestConvo.messages.length > 0) {
-        setMessages(latestConvo.messages.map(msg => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-          timestamp: new Date(msg.created_at).toLocaleTimeString()
-        })))
-      }
+      loadConversation(conversations[0].id)
     }
-  }, [conversations, conversationId])
+  }, [conversations])
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fef6e4]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#33272a] font-pixel mb-4">LOADING...</div>
+          <div className="text-3xl font-[var(--font-head)] mb-4 uppercase">Loading...</div>
+          <div className="w-32 h-4 bg-[var(--muted)] mx-auto border-2 border-[var(--border)]">
+            <div className="h-full bg-[var(--primary)] pixel-pulse w-1/2" />
+          </div>
         </div>
       </div>
     )
   }
 
-  const handleSendMessage = async (message: string) => {
-    // Add user message immediately
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || sendingMessage) return
+
+    const message = inputMessage.trim()
+    setInputMessage('')
+
     const userMessage = {
       role: 'user' as const,
       content: message,
@@ -72,131 +68,220 @@ export default function ChatPage() {
     }
     setMessages(prev => [...prev, userMessage])
 
+    const aiMessageIndex = messages.length + 1
+    const aiMessage = {
+      role: 'assistant' as const,
+      content: '',
+      timestamp: new Date().toLocaleTimeString()
+    }
+    setMessages(prev => [...prev, aiMessage])
+
     try {
-      const response = await sendMessage({
+      await sendStreamingMessage({
         conversationId: conversationId || undefined,
         message,
-        agentType: 'general_assistant'
+        agentType: 'general_assistant',
+        onToken: (token: string) => {
+          setMessages(prev => {
+            const updated = [...prev]
+            updated[aiMessageIndex] = {
+              ...updated[aiMessageIndex],
+              content: updated[aiMessageIndex].content + token
+            }
+            return updated
+          })
+        },
+        onComplete: (fullMessage: string) => {
+          setMessages(prev => {
+            const updated = [...prev]
+            updated[aiMessageIndex] = {
+              ...updated[aiMessageIndex],
+              content: fullMessage
+            }
+            return updated
+          })
+        },
+        onError: (error: string) => {
+          console.error('Streaming error:', error)
+          setMessages(prev => {
+            const updated = [...prev]
+            updated[aiMessageIndex] = {
+              ...updated[aiMessageIndex],
+              content: 'Sorry, I encountered an error. Please try again.'
+            }
+            return updated
+          })
+        }
+      }).then((response) => {
+        if (!conversationId && response?.conversation_id) {
+          setConversationId(response.conversation_id)
+          refetch()
+        }
       })
-
-      // Add AI response
-      const aiMessage = {
-        role: 'assistant' as const,
-        content: response.message,
-        timestamp: new Date().toLocaleTimeString()
-      }
-      setMessages(prev => [...prev, aiMessage])
-
-      // Set conversation ID if this was a new conversation
-      if (!conversationId && response.conversation_id) {
-        setConversationId(response.conversation_id)
-        refetch()
-      }
     } catch (error) {
       console.error('Failed to send message:', error)
-      // Show error message
-      const errorMessage = {
-        role: 'assistant' as const,
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date().toLocaleTimeString()
-      }
-      setMessages(prev => [...prev, errorMessage])
     }
   }
 
   const startNewConversation = () => {
     setConversationId(null)
-    setMessages([{
-      role: 'assistant',
-      content: 'Greetings, warrior! I am your personal assistant. How can I help you power up your day?',
-      timestamp: new Date().toLocaleTimeString()
-    }])
+    setMessages([])
+    setShowSidebar(false)
+  }
+
+  const loadConversation = async (convId: number) => {
+    try {
+      setConversationId(convId)
+      setShowSidebar(false)
+
+      const { apiClient } = await import('@/lib/api/client')
+      const conv = await apiClient.getConversation(convId)
+
+      if (conv && conv.messages) {
+        setMessages(conv.messages.map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: new Date(msg.created_at).toLocaleTimeString()
+        })))
+      }
+    } catch (error) {
+      console.error('Failed to load conversation:', error)
+    }
   }
 
   return (
-    <KrilinPageLayout
-      title="COMMUNICATION TERMINAL"
-      showBackButton={true}
-      breadcrumbs={[
-        { label: "Home", href: "/" },
-        { label: "Chat" }
-      ]}
-      containerSize="xl"
-      headerContent={
-        <div className="flex justify-end">
-          <button
-            onClick={startNewConversation}
-            className="px-4 py-2 bg-[#4ecdc4] hover:bg-[#4ecdc4]/80 text-[#33272a] font-bold border-2 border-[#33272a] transition-colors"
-          >
-            NEW CONVERSATION
-          </button>
+    <div className="min-h-screen bg-[var(--background)] flex flex-col">
+      {/* Header */}
+      <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <Link href="/">
+                <Button variant="ghost" size="icon">
+                  <Home size={24} />
+                </Button>
+              </Link>
+              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                Chat
+              </h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => setShowSidebar(!showSidebar)}
+                variant="outline"
+                size="sm"
+              >
+                <MessageSquare size={16} className="mr-2" />
+                {showSidebar ? 'Hide' : 'Show'} History
+              </Button>
+              <Button onClick={startNewConversation} size="sm">
+                <Plus size={16} className="mr-2" />
+                New Chat
+              </Button>
+            </div>
+          </div>
         </div>
-      }
-    >
-      <div className="relative min-h-[600px]">
-        {/* Chat Container */}
-        <div className="border-4 border-[#33272a] bg-[#fffaeb]/95 backdrop-blur-sm relative mb-6">
-          <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
-          
-          <KrilinChatContainer>
-            {messages.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-2xl font-bold text-[#33272a] font-pixel mb-4">
-                  READY TO START TRAINING!
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        {showSidebar && (
+          <aside className="w-80 border-r-4 border-[var(--border)] bg-[var(--card)] overflow-y-auto">
+            <div className="p-4">
+              <h3 className="text-lg font-bold mb-4 uppercase">Chat History</h3>
+              {conversationsLoading ? (
+                <div className="text-center py-8 text-[var(--muted-foreground)]">Loading...</div>
+              ) : conversations.length === 0 ? (
+                <p className="text-sm text-[var(--muted-foreground)]">No conversations yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {conversations.map((conv) => (
+                    <button
+                      key={conv.id}
+                      onClick={() => loadConversation(conv.id)}
+                      className={`w-full text-left p-3 border-2 border-[var(--border)] transition-all ${
+                        conversationId === conv.id
+                          ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                          : 'bg-[var(--card)] hover:shadow-[2px_2px_0_0_var(--border)] hover:translate-x-[-1px] hover:translate-y-[-1px]'
+                      }`}
+                    >
+                      <div className="font-bold text-sm truncate">{conv.title}</div>
+                      <div className="text-xs opacity-70 mt-1 truncate">
+                        {conv.messages.length > 0
+                          ? conv.messages[conv.messages.length - 1].content.substring(0, 50) + '...'
+                          : 'No messages yet'}
+                      </div>
+                    </button>
+                  ))}
                 </div>
-                <p className="text-[#594a4e]">
-                  Ask me anything - I'm here to help you level up!
-                </p>
+              )}
+            </div>
+          </aside>
+        )}
+
+        {/* Chat Area */}
+        <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center max-w-md">
+                  <div className="text-5xl font-[var(--font-head)] mb-4 uppercase text-outlined">
+                    Chat
+                  </div>
+                  <p className="text-lg text-[var(--muted-foreground)]">
+                    Start a conversation with your AI assistant
+                  </p>
+                </div>
               </div>
             ) : (
-              <>
-                {messages.map((message, index) => (
-                  <KrilinMessageBubble
-                    key={index}
-                    content={message.content}
-                    role={message.role}
-                    timestamp={message.timestamp}
-                  />
-                ))}
-                <div ref={messagesEndRef} />
-              </>
-            )}
-              
-            {sendingMessage && (
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-full bg-[#ff6b35] flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white animate-pixelPulse" />
-                </div>
-                <div className="bg-[#ff6b35]/10 border-2 border-[#ff6b35]/30 rounded-lg px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <PixelLoader variant="dots" size="sm" text="" />
-                    <span className="font-pixel text-sm text-[#ff6b35]">
-                      AI is thinking...
-                    </span>
+              messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[75%] p-4 border-2 border-[var(--border)] ${
+                      message.role === 'user'
+                        ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
+                        : 'bg-[var(--card)] text-[var(--card-foreground)]'
+                    } shadow-[2px_2px_0_0_var(--border)]`}
+                  >
+                    <div className="text-xs opacity-70 mb-2 uppercase">
+                      {message.role === 'user' ? 'You' : 'Assistant'}
+                    </div>
+                    <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                    <div className="text-xs opacity-50 mt-2">{message.timestamp}</div>
                   </div>
                 </div>
-              </div>
+              ))
             )}
-          </KrilinChatContainer>
-        </div>
-
-        {/* Input Container */}
-        <div className="border-4 border-[#33272a] bg-[#fffaeb] relative hover-lift">
-          <div className="absolute -top-1 -left-1 w-4 h-4 bg-[#33272a]" />
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#33272a]" />
-          <div className="absolute -bottom-1 -left-1 w-4 h-4 bg-[#33272a]" />
-          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#33272a]" />
-          
-          <div className="p-4">
-            <KrilinMessageInput 
-              onSend={handleSendMessage}
-              disabled={sendingMessage}
-            />
+            <div ref={messagesEndRef} />
           </div>
-          
-          <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent pointer-events-none" />
-        </div>
+
+          {/* Input */}
+          <div className="border-t-4 border-[var(--border)] bg-[var(--card)] p-4 sticky bottom-0">
+            <div className="flex gap-3">
+              <Input
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                placeholder="Type your message..."
+                disabled={sendingMessage}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={sendingMessage || !inputMessage.trim()}
+                size="lg"
+              >
+                <Send size={20} />
+              </Button>
+            </div>
+          </div>
+        </main>
       </div>
-    </KrilinPageLayout>
+    </div>
   )
 }
