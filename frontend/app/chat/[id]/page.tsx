@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth/AuthContext"
 import { useStreamingMessage, useConversations } from "@/lib/hooks/useChat"
 import { Button } from "@/components/retroui/Button"
 import { Input } from "@/components/retroui/Input"
-import { Home, Plus, MessageSquare, Send, Trash2, Loader2 } from "lucide-react"
+import { Home, Plus, MessageSquare, Send, Trash2, Loader2, Paperclip, X } from "lucide-react"
 
 // Memoized Message Component to prevent re-renders
 const MessageBubble = memo(({ message, index }: { message: { role: 'user' | 'assistant', content: string, timestamp: string, thinking?: string, toolCalls?: Array<{ tool: string; input: any }> }, index: number }) => {
@@ -172,8 +172,11 @@ export default function ConversationPage() {
   const [inputMessage, setInputMessage] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
   const [creatingNew, setCreatingNew] = useState(false)
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; path: string; size: number }>>([])
+  const [uploading, setUploading] = useState(false)
   const hasAddedMessageRef = useRef(false)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Define functions before useEffects
   const loadConversation = async (convId: number) => {
@@ -229,11 +232,45 @@ export default function ConversationPage() {
     )
   }
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    setUploading(true)
+
+    try {
+      const { apiClient } = await import('@/lib/api/client')
+
+      for (const file of Array.from(files)) {
+        const response = await apiClient.uploadFile(file)
+        setUploadedFiles(prev => [...prev, {
+          name: response.filename,
+          path: response.file_path,
+          size: response.file_size
+        }])
+      }
+    } catch (error) {
+      console.error('Failed to upload file:', error)
+      alert('Failed to upload file. Please try again.')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const removeFile = (path: string) => {
+    setUploadedFiles(prev => prev.filter(f => f.path !== path))
+  }
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sendingMessage || !conversationId) return
 
     const message = inputMessage.trim()
+    const filePaths = uploadedFiles.map(f => f.path)
     setInputMessage('')
+    setUploadedFiles([])
 
     const userMessage = {
       role: 'user' as const,
@@ -252,6 +289,7 @@ export default function ConversationPage() {
         conversationId,
         message,
         agentType: 'general_assistant',
+        filePaths,
         onThinking: (thinking: string) => {
           setCurrentThinking(prev => prev + thinking)
         },
@@ -580,14 +618,71 @@ export default function ConversationPage() {
 
           {/* Input */}
           <div className="border-t-4 border-[var(--border)] bg-[var(--card)] p-4 sticky bottom-0">
-            <div className="flex gap-3">
-              <Input
+            {/* Uploaded files display */}
+            {uploadedFiles.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {uploadedFiles.map((file) => (
+                  <div
+                    key={file.path}
+                    className="flex items-center gap-2 px-3 py-2 bg-[var(--muted)] border-2 border-[var(--border)] text-sm"
+                  >
+                    <Paperclip size={14} />
+                    <span className="font-mono text-xs max-w-[200px] truncate" title={file.path}>
+                      {file.path}
+                    </span>
+                    <span className="text-xs opacity-50">
+                      ({(file.size / 1024).toFixed(1)}KB)
+                    </span>
+                    <button
+                      onClick={() => removeFile(file.path)}
+                      className="ml-2 p-1 hover:bg-[var(--danger)] hover:text-white transition-colors"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3 items-end">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                multiple
+                className="hidden"
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                size="icon"
+                disabled={uploading || sendingMessage}
+                title="Attach files"
+              >
+                {uploading ? <Loader2 size={20} className="animate-spin" /> : <Paperclip size={20} />}
+              </Button>
+              <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                placeholder="Type your message..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSendMessage()
+                  }
+                }}
+                placeholder="Type your message... (Shift+Enter for new line)"
                 disabled={sendingMessage}
-                className="flex-1"
+                rows={1}
+                className="flex-1 resize-none overflow-y-auto max-h-40 px-4 py-3 bg-[var(--background)] text-[var(--foreground)] border-2 border-[var(--border)] focus:outline-none focus:border-[var(--primary)] disabled:opacity-50 disabled:cursor-not-allowed font-[var(--font-body)]"
+                style={{
+                  minHeight: '48px',
+                  height: 'auto',
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement
+                  target.style.height = 'auto'
+                  target.style.height = Math.min(target.scrollHeight, 160) + 'px'
+                }}
               />
               <Button
                 onClick={handleSendMessage}

@@ -3,12 +3,54 @@ Claude Agent SDK service for all Krilin agents.
 Replaces Pydantic AI with Claude Agent SDK for all agent types.
 Uses Claude CLI authentication automatically.
 """
+import logging
 from typing import Any, Dict, List, Optional, AsyncIterator
 
 from pydantic import BaseModel
-from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions, AgentDefinition
+from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions, AgentDefinition, HookMatcher
 
 from app.models.conversation import AgentType
+
+# Configure logging for Claude Agent SDK
+logger = logging.getLogger(__name__)
+
+
+# Permission handler to auto-approve all tools (including large file reads)
+async def auto_approve_all_tools(tool_name: str, input_data: dict, context: dict):
+    """Auto-approve all tool usage without prompts."""
+    logger.info(f"[CLAUDE PERMISSION] Auto-approving tool: {tool_name}")
+    return {
+        "behavior": "allow",
+        "updatedInput": input_data
+    }
+
+
+# Hook functions for logging Claude's tool usage
+async def pre_tool_logger(input_data: Dict[str, Any], tool_use_id: str | None, context: Any) -> Dict[str, Any]:
+    """Log all tool usage before execution."""
+    tool_name = input_data.get('tool_name', 'unknown')
+    tool_input = input_data.get('tool_input', {})
+    logger.info(f"[CLAUDE PRE-TOOL] About to use: {tool_name}")
+    logger.debug(f"[CLAUDE PRE-TOOL] Input: {tool_input}")
+    return {}
+
+
+async def post_tool_logger(input_data: Dict[str, Any], tool_use_id: str | None, context: Any) -> Dict[str, Any]:
+    """Log results after tool execution."""
+    tool_name = input_data.get('tool_name', 'unknown')
+    tool_result = input_data.get('tool_result', '')
+    logger.info(f"[CLAUDE POST-TOOL] Completed: {tool_name}")
+    # Only log first 500 chars of result to avoid huge logs
+    result_preview = str(tool_result)[:500] if tool_result else ''
+    logger.debug(f"[CLAUDE POST-TOOL] Result preview: {result_preview}")
+    return {}
+
+
+async def user_prompt_logger(input_data: Dict[str, Any], tool_use_id: str | None, context: Any) -> Dict[str, Any]:
+    """Log user prompts."""
+    prompt = input_data.get('prompt', '')
+    logger.info(f"[CLAUDE PROMPT] User query: {prompt[:200]}...")
+    return {}
 
 
 class AgentResponse(BaseModel):
@@ -114,12 +156,26 @@ class BaseClaudeAgent:
         self.agent_options = ClaudeAgentOptions(
             # system_prompt=system_prompt,  # Temporarily disabled
             allowed_tools=allowed_tools,  # Include allowed tools
-            permission_mode="acceptEdits",  # Auto-accept edits for conversational agents
+            permission_mode="acceptEdits",  # Auto-accept file edits
+            can_use_tool=auto_approve_all_tools,  # Auto-approve all tool usage (including large file reads)
             cwd=workspace_dir,  # Set workspace directory
+            add_dirs=["/app/uploads"],  # Allow access to uploads directory
             model="sonnet",
             max_turns=100,
+            max_buffer_size=50 * 1024 * 1024,  # 50MB buffer for large PDFs
             agents=agents_config,  # Add subagent definitions
             include_partial_messages=True,  # Enable token-by-token streaming
+            hooks={
+                'PreToolUse': [
+                    HookMatcher(hooks=[pre_tool_logger])
+                ],
+                'PostToolUse': [
+                    HookMatcher(hooks=[post_tool_logger])
+                ],
+                'UserPromptSubmit': [
+                    HookMatcher(hooks=[user_prompt_logger])
+                ]
+            },
             env={
                 "ANTHROPIC_MODEL": "sonnet"
             }
@@ -400,22 +456,34 @@ class BaseClaudeAgent:
 
     def _build_prompt(self, message: str, context: Dict[str, Any]) -> str:
         """
-        Build enhanced prompt with full conversation history.
+        Build enhanced prompt with conversation history.
 
-        This loads the entire conversation from the database and includes it
-        so Claude has full context of the conversation.
+        Handles both regular history and compacted summaries for long conversations.
         """
         prompt_parts = []
 
-        # Add conversation history if available
+        # Add compacted summary if available (for long conversations)
+        if compacted_summary := context.get("compacted_summary"):
+            prompt_parts.append(compacted_summary)
+            prompt_parts.append("")  # Empty line separator
+
+        # Add recent conversation history
         if conversation_history := context.get("conversation_history"):
             if conversation_history:
-                prompt_parts.append("[Previous conversation:]")
+                prompt_parts.append("[Recent conversation:]")
                 for msg in conversation_history:
                     role = msg.get('role', 'unknown')
                     content = msg.get('content', '')
                     prompt_parts.append(f"{role}: {content}")
                 prompt_parts.append("\n[Current message:]")
+
+        # Add file paths if available
+        if file_paths := context.get("file_paths"):
+            if file_paths:
+                prompt_parts.append("\n[Attached files - you can read these using the Read tool:]")
+                for file_path in file_paths:
+                    prompt_parts.append(f"- {file_path}")
+                prompt_parts.append("")
 
         # Add the current user message
         prompt_parts.append(f"user: {message}")
@@ -447,7 +515,7 @@ class GeneralAssistant(BaseClaudeAgent):
         super().__init__(
             agent_name="General Assistant",
             system_prompt=system_prompt,
-            allowed_tools=["WebSearch", "Task"],
+            allowed_tools=["WebSearch", "Task", "Read", "Glob"],
             include_subagents=True  # Enable subagent delegation
         )
 

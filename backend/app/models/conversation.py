@@ -30,7 +30,11 @@ class Conversation(Base):
     # Context and memory for AI agents
     context: Mapped[dict] = mapped_column(JSON, default=dict)
     goals_discussed: Mapped[list[str]] = mapped_column(JSON, default=list)
-    
+
+    # Compaction caching (for long conversations)
+    compacted_summary: Mapped[Optional[str]] = mapped_column(Text)
+    compaction_point: Mapped[Optional[int]] = mapped_column()  # Message index where compaction happened
+
     # Status
     is_active: Mapped[bool] = mapped_column(default=True)
     

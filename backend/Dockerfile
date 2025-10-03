@@ -12,6 +12,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         libpq-dev \
+        postgresql-client \
         curl \
         ca-certificates \
         gnupg \
@@ -42,8 +43,15 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p uploads
 
+# Install psycopg2-binary for Alembic (SQLAlchemy migrations)
+RUN pip install psycopg2-binary
+
+# Copy and make migration/startup script executable
+COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Expose port
 EXPOSE 8000
 
 # Default command
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/docker-entrypoint.sh"]

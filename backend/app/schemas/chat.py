@@ -104,6 +104,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=10000)
     metadata: Optional[dict] = Field(default_factory=dict)
     context: Optional[dict] = Field(default_factory=dict)
+    file_paths: Optional[list[str]] = Field(default_factory=list, description="Paths to uploaded files")
 
 
 class ChatResponse(BaseModel):
@@ -156,3 +157,11 @@ class GoalChatResponse(ChatResponse):
     exercises: list[dict] = Field(default_factory=list)
     timeline: Optional[dict] = Field(default_factory=dict)
     tracking_metrics: list[str] = Field(default_factory=list)
+
+
+class FileUploadResponse(BaseModel):
+    """Schema for file upload responses."""
+    filename: str
+    file_path: str
+    file_size: int
+    content_type: str

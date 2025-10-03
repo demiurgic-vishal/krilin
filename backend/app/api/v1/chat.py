@@ -3,9 +3,12 @@ AI Chat API endpoints.
 Handles conversations with specialized AI agents.
 """
 import json
+import os
+import uuid
+from pathlib import Path
 from typing import Any, AsyncGenerator
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, UploadFile, File, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -17,11 +20,20 @@ from app.schemas.chat import (
     ChatResponse,
     ConversationCreate,
     ConversationResponse,
-    MessageResponse
+    MessageResponse,
+    FileUploadResponse
 )
 from app.services.claude_agent_service import get_agent_by_type  # Using Claude Agent SDK service
+from app.services.conversation_compactor import get_conversation_compactor
 
 router = APIRouter()
+
+# Upload directory configuration
+UPLOAD_DIR = Path("/app/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# Max file size: 50MB
+MAX_FILE_SIZE = 50 * 1024 * 1024
 
 
 @router.post("/conversations", response_model=ConversationResponse)
@@ -256,19 +268,50 @@ async def send_message_stream(
         metadata = {}
 
         try:
-            # Get AI agent
+            # Get AI agent and compactor
             agent = get_agent_by_type(conversation.agent_type)
+            compactor = get_conversation_compactor()
 
-            # Build context with conversation history from database
+            # Build message history
+            all_messages = [
+                {"role": msg.role, "content": msg.content}
+                for msg in conversation.messages
+            ]
+
+            # Get compacted history (uses cached summary if available)
+            compacted_summary, recent_messages, needs_warning, compaction_metadata = await compactor.get_compacted_history(
+                messages=all_messages,
+                conversation_id=conversation_id,
+                cached_summary=conversation.compacted_summary,
+                summary_valid_until_message=conversation.compaction_point
+            )
+
+            # Update cache if new compaction happened
+            if compaction_metadata.get("compaction_point") and not compaction_metadata.get("used_cached_summary"):
+                conversation.compacted_summary = compacted_summary
+                conversation.compaction_point = compaction_metadata["compaction_point"]
+                await db.commit()
+
+            # Build context with compacted history
             context = {
                 "user_id": current_user.id,
                 "conversation_context": conversation.context,
-                "conversation_history": [
-                    {"role": msg.role, "content": msg.content}
-                    for msg in conversation.messages  # All messages, not just last 10
-                ],
-                "user_preferences": current_user.preferences
+                "conversation_history": recent_messages,
+                "compacted_summary": compacted_summary,  # Include summary for prompt building
+                "user_preferences": current_user.preferences,
+                "compaction_metadata": compaction_metadata,  # Pass to frontend
+                "file_paths": chat_request.file_paths  # Pass uploaded file paths to agent
             }
+
+            # Send compaction warning if needed (before streaming starts)
+            if compaction_metadata.get("is_compacted"):
+                compaction_warning = {
+                    "type": "compaction_warning",
+                    "total_tokens": compaction_metadata.get("total_tokens"),
+                    "messages_compacted": compaction_metadata.get("messages_compacted"),
+                    "is_slow": not compaction_metadata.get("used_cached_summary")  # First time compaction is slow
+                }
+                yield f"data: {json.dumps(compaction_warning)}\n\n"
 
             # Stream response - will include history in the prompt
             async for event in agent.process_message_streaming(chat_request.message, context):
@@ -422,6 +465,63 @@ async def delete_conversation(
 
     await db.delete(conversation)
     await db.commit()
+
+
+@router.post("/upload", response_model=FileUploadResponse)
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: CurrentUserDep = None
+) -> Any:
+    """
+    Upload a file to be used in chat conversations.
+
+    The file will be saved to the uploads directory and a path will be returned.
+    This path can be referenced in chat messages for Claude to read.
+
+    Args:
+        file: The uploaded file
+        current_user: Current authenticated user
+
+    Returns:
+        FileUploadResponse: File metadata and path
+
+    Raises:
+        HTTPException: If file is too large or upload fails
+    """
+    # Check file size
+    file.file.seek(0, 2)  # Seek to end
+    file_size = file.file.tell()
+    file.file.seek(0)  # Reset to beginning
+
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE / (1024 * 1024)}MB"
+        )
+
+    try:
+        # Generate unique filename
+        file_extension = Path(file.filename).suffix if file.filename else ""
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = UPLOAD_DIR / unique_filename
+
+        # Save file
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+
+        return FileUploadResponse(
+            filename=file.filename or unique_filename,
+            file_path=str(file_path),
+            file_size=file_size,
+            content_type=file.content_type or "application/octet-stream"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error uploading file: {str(e)}"
+        )
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=list[MessageResponse])
