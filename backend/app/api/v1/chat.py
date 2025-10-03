@@ -36,6 +36,12 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_FILE_SIZE = 50 * 1024 * 1024
 
 
+def sanitize_text(text: str) -> str:
+    """Remove null bytes and other problematic characters from text for PostgreSQL."""
+    # Remove null bytes which PostgreSQL doesn't allow
+    return text.replace('\x00', '')
+
+
 @router.post("/conversations", response_model=ConversationResponse)
 async def create_conversation(
     conversation_data: ConversationCreate,
@@ -150,19 +156,19 @@ async def send_message(
             detail="Conversation not found"
         )
     
-    # Save user message
+    # Save user message (sanitize to remove null bytes)
     user_message = Message(
         conversation_id=conversation_id,
         role="user",
-        content=chat_request.message,
+        content=sanitize_text(chat_request.message),
         message_metadata=chat_request.metadata or {}
     )
     db.add(user_message)
-    
+
     try:
         # Get AI agent and generate response
         agent = get_agent_by_type(conversation.agent_type)
-        
+
         # Build conversation context
         context = {
             "user_id": current_user.id,
@@ -173,18 +179,18 @@ async def send_message(
             ],
             "user_preferences": current_user.preferences
         }
-        
+
         # Generate AI response
         ai_response = await agent.process_message(
             message=chat_request.message,
             context=context
         )
-        
-        # Save AI response
+
+        # Save AI response (sanitize to remove null bytes)
         ai_message = Message(
             conversation_id=conversation_id,
             role="assistant",
-            content=ai_response.content,
+            content=sanitize_text(ai_response.content),
             message_metadata=ai_response.metadata,
             prompt_tokens=ai_response.prompt_tokens,
             completion_tokens=ai_response.completion_tokens
@@ -252,11 +258,11 @@ async def send_message_stream(
             detail="Conversation not found"
         )
 
-    # Save user message
+    # Save user message (sanitize to remove null bytes)
     user_message = Message(
         conversation_id=conversation_id,
         role="user",
-        content=chat_request.message,
+        content=sanitize_text(chat_request.message),
         message_metadata=chat_request.metadata or {}
     )
     db.add(user_message)
@@ -354,11 +360,11 @@ async def send_message_stream(
                     # Update metadata from result
                     metadata.update(event.metadata)
 
-            # Save AI response to database
+            # Save AI response to database (sanitize to remove null bytes)
             ai_message = Message(
                 conversation_id=conversation_id,
                 role="assistant",
-                content=full_response,
+                content=sanitize_text(full_response),
                 message_metadata=metadata,
             )
             db.add(ai_message)

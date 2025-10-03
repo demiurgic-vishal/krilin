@@ -101,7 +101,7 @@ class ConversationResponse(ConversationBase):
 
 class ChatRequest(BaseModel):
     """Schema for chat message requests."""
-    message: str = Field(..., min_length=1, max_length=10000)
+    message: str = Field(..., min_length=1, max_length=1000000)  # 1M characters (~200k tokens)
     metadata: Optional[dict] = Field(default_factory=dict)
     context: Optional[dict] = Field(default_factory=dict)
     file_paths: Optional[list[str]] = Field(default_factory=list, description="Paths to uploaded files")
