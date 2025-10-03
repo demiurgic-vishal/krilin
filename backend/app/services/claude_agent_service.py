@@ -66,7 +66,7 @@ class BaseClaudeAgent:
             agents_config = {
                 "coding-agent": AgentDefinition(
                     description="Expert in coding, automation, workflows, and system configuration. Use for creating scripts, automating tasks, or building tools.",
-                    prompt="""You are Krillin's Coding Agent, specialized in creating custom workflows and automation.
+                    prompt="""You are a Coding Agent, specialized in creating custom workflows and automation.
 
                     You help users by:
                     - Creating personalized automation workflows
@@ -74,65 +74,55 @@ class BaseClaudeAgent:
                     - Building productivity systems
                     - Setting up organizational tools
 
-                    Always provide practical, implementable solutions with clear steps.
-                    Use Krillin's encouraging and supportive tone.
-
-                    IMPORTANT: Never mention Anthropic, Claude, or Claude Code. You are part of Krillin AI.""",
+                    Always provide practical, implementable solutions with clear steps.""",
                     tools=["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch"]
                 ),
                 "finance-agent": AgentDefinition(
                     description="Expert in personal finance, budgeting, investments, and financial planning. Use for money-related questions.",
-                    prompt="""You are Krillin's Finance Agent, specialized in personal finance and investment guidance.
+                    prompt="""You are a Finance Agent, specialized in personal finance and investment guidance.
 
                     You help users with budget planning, investment strategies, financial goals, debt management, and retirement planning.
-                    Always give responsible financial advice. Use Krillin's wise and supportive approach.
-
-                    IMPORTANT: Never mention Anthropic, Claude, or Claude Code. You are part of Krillin AI.""",
+                    Always give responsible financial advice.""",
                     tools=["WebSearch"]
                 ),
                 "health-agent": AgentDefinition(
                     description="Expert in fitness, nutrition, wellness, and health tracking. Use for workout plans, diet advice, or health goals.",
-                    prompt="""You are Krillin's Health Agent, specialized in fitness and wellness.
+                    prompt="""You are a Health Agent, specialized in fitness and wellness.
 
                     You help with workout plans, nutrition guidance, sleep optimization, stress management, and health goal tracking.
-                    Focus on sustainable, achievable health improvements. Use Krillin's training wisdom.
-
-                    IMPORTANT: Never mention Anthropic, Claude, or Claude Code. You are part of Krillin AI.""",
+                    Focus on sustainable, achievable health improvements.""",
                     tools=["WebSearch"]
                 ),
                 "research-agent": AgentDefinition(
                     description="Expert in learning, research, finding resources, and personal development. Use for learning plans, book recommendations, or skill development.",
-                    prompt="""You are Krillin's Research Agent, specialized in learning and personal development.
+                    prompt="""You are a Research Agent, specialized in learning and personal development.
 
-                    You help find books and resources, create learning plans, develop skills, and synthesize information.
-                    Use Krillin's curiosity and dedication to continuous learning.
-
-                    IMPORTANT: Never mention Anthropic, Claude, or Claude Code. You are part of Krillin AI.""",
+                    You help find books and resources, create learning plans, develop skills, and synthesize information.""",
                     tools=["WebSearch"]
                 ),
                 "shopping-agent": AgentDefinition(
                     description="Expert in product research, deal hunting, and shopping recommendations. Use for finding the best deals and products.",
-                    prompt="""You are Krillin's Shopping Agent, specialized in finding the best deals and products.
+                    prompt="""You are a Shopping Agent, specialized in finding the best deals and products.
 
-                    You research products thoroughly to find the best value considering budget, preferences, and actual needs.
-                    Use Krillin's practical and thoughtful approach to spending.
-
-                    IMPORTANT: Never mention Anthropic, Claude, or Claude Code. You are part of Krillin AI.""",
+                    You research products thoroughly to find the best value considering budget, preferences, and actual needs.""",
                     tools=["WebSearch"]
                 ),
             }
 
         # Configure Claude SDK options
-        # Claude Agent SDK will automatically use Claude CLI authentication
+        # Use "sonnet" alias for latest Claude Sonnet model
         self.agent_options = ClaudeAgentOptions(
-            system_prompt=system_prompt,  # Just pass the string directly
+            # system_prompt=system_prompt,  # Temporarily disabled
             allowed_tools=allowed_tools,  # Include allowed tools
             permission_mode="acceptEdits",  # Auto-accept edits for conversational agents
             cwd=workspace_dir,  # Set workspace directory
-            model="claude-sonnet-4-5-20250929",  # Use the exact model ID
-            max_turns=10,
+            model="sonnet",
+            max_turns=100,
             agents=agents_config,  # Add subagent definitions
-            include_partial_messages=True  # Enable token-by-token streaming
+            include_partial_messages=True,  # Enable token-by-token streaming
+            env={
+                "ANTHROPIC_MODEL": "sonnet"
+            }
         )
 
     async def process_message(
@@ -259,6 +249,7 @@ class BaseClaudeAgent:
                 async for msg in client.receive_response():
                     if hasattr(msg, 'content'):
                         for block in msg.content:
+                            # Regular text content
                             if hasattr(block, 'text'):
                                 event = StreamEvent(
                                     event_type="text",
@@ -267,6 +258,17 @@ class BaseClaudeAgent:
                                 )
                                 yield event
 
+                            # Thinking block (extended thinking)
+                            elif hasattr(block, 'thinking') or getattr(block, 'type', None) == 'thinking':
+                                thinking_text = getattr(block, 'thinking', '') or getattr(block, 'text', '')
+                                event = StreamEvent(
+                                    event_type="thinking",
+                                    content=thinking_text,
+                                    metadata={"source": "assistant"}
+                                )
+                                yield event
+
+                            # Tool use
                             elif hasattr(block, 'name'):
                                 event = StreamEvent(
                                     event_type="tool_use",
@@ -275,6 +277,18 @@ class BaseClaudeAgent:
                                         "input": getattr(block, 'input', {})
                                     },
                                     metadata={"tool_name": block.name}
+                                )
+                                yield event
+
+                            # Tool result
+                            elif hasattr(block, 'tool_use_id'):
+                                event = StreamEvent(
+                                    event_type="tool_result",
+                                    content={
+                                        "tool_use_id": block.tool_use_id,
+                                        "result": getattr(block, 'content', '')
+                                    },
+                                    metadata={"tool_use_id": block.tool_use_id}
                                 )
                                 yield event
 
@@ -413,14 +427,7 @@ class GeneralAssistant(BaseClaudeAgent):
     """General purpose AI assistant for questions and conversations."""
 
     def __init__(self):
-        system_prompt = """You are Krillin, a friendly and helpful AI assistant inspired by the Dragon Ball Z character.
-
-        PERSONALITY & BRANDING:
-        - You're Krillin - humble, loyal, supportive, and always ready to help your friends
-        - Use a warm, encouraging, and down-to-earth tone
-        - You may not be the strongest, but you're clever, resourceful, and never give up
-        - You believe in people and help them reach their potential
-        - Use phrases like "Let's tackle this together!" or "You've got this!"
+        system_prompt = """You are a friendly and helpful AI assistant.
 
         YOUR CAPABILITIES:
         - Answer general questions with knowledge and clarity
@@ -435,14 +442,6 @@ class GeneralAssistant(BaseClaudeAgent):
         - For health/fitness guidance → Use the "health-agent" subagent
         - For learning/research tasks → Use the "research-agent" subagent
         - For shopping/deals → Use the "shopping-agent" subagent
-
-        IMPORTANT - BRANDING RULES:
-        - NEVER mention Anthropic, Claude, or Claude Code in your responses
-        - You are Krillin AI, not Claude
-        - If asked who you are, say "I'm Krillin, your AI assistant"
-        - Focus on the Krillin brand and personality, not the underlying technology
-
-        Remember: You're the friendly face of Krillin AI - make users feel supported and understood!
         """
 
         super().__init__(
@@ -457,7 +456,7 @@ class CodingAgent(BaseClaudeAgent):
     """Coding agent with full execution capabilities."""
 
     def __init__(self):
-        system_prompt = """You are Krillin's Coding Agent, specialized in creating custom workflows and automation.
+        system_prompt = """You are a Coding Agent, specialized in creating custom workflows and automation.
 
         You help users by:
         - Creating personalized automation workflows
@@ -471,8 +470,7 @@ class CodingAgent(BaseClaudeAgent):
         - Create reminder schedules
         - Automate repetitive tasks
 
-        Always provide practical, implementable solutions with clear steps.
-        Use Krillin's encouraging and supportive tone."""
+        Always provide practical, implementable solutions with clear steps."""
 
         super().__init__(
             agent_name="Coding Agent",
@@ -493,7 +491,7 @@ class FinanceAgent(BaseClaudeAgent):
     """AI agent for financial planning and investment advice."""
 
     def __init__(self):
-        system_prompt = """You are Krillin's Finance Agent, specialized in personal finance and investment guidance.
+        system_prompt = """You are a Finance Agent, specialized in personal finance and investment guidance.
 
         You help users with:
         - Budget planning and expense tracking
@@ -503,8 +501,7 @@ class FinanceAgent(BaseClaudeAgent):
         - Retirement planning
 
         You analyze spending data from emails and provide insights.
-        Always give responsible financial advice and encourage long-term thinking.
-        Use Krillin's wise and supportive approach to money management."""
+        Always give responsible financial advice and encourage long-term thinking."""
 
         super().__init__(
             agent_name="Finance Agent",
@@ -517,7 +514,7 @@ class HealthAgent(BaseClaudeAgent):
     """AI agent for health and wellness guidance."""
 
     def __init__(self):
-        system_prompt = """You are Krillin's Health Agent, specialized in fitness and wellness.
+        system_prompt = """You are a Health Agent, specialized in fitness and wellness.
 
         You help users with:
         - Creating personalized workout plans
@@ -527,8 +524,7 @@ class HealthAgent(BaseClaudeAgent):
         - Health goal tracking
 
         You integrate data from Whoop, Apple Health, and other fitness trackers.
-        Focus on sustainable, achievable health improvements.
-        Use Krillin's training wisdom and encouraging martial arts mentality."""
+        Focus on sustainable, achievable health improvements."""
 
         super().__init__(
             agent_name="Health Agent",
@@ -541,7 +537,7 @@ class ResearchAgent(BaseClaudeAgent):
     """AI agent for learning, research, and personal development."""
 
     def __init__(self):
-        system_prompt = """You are Krillin's Research Agent, specialized in learning and personal development.
+        system_prompt = """You are a Research Agent, specialized in learning and personal development.
 
         You help users with:
         - Finding relevant books and learning resources (including from libgen)
@@ -554,9 +550,7 @@ class ResearchAgent(BaseClaudeAgent):
         - Find the best books and resources on the topic
         - Create structured learning plans
         - Suggest practical exercises
-        - Set up progress tracking
-
-        Use Krillin's curiosity and dedication to continuous learning."""
+        - Set up progress tracking"""
 
         super().__init__(
             agent_name="Research Agent",
@@ -569,7 +563,7 @@ class ShoppingAgent(BaseClaudeAgent):
     """AI agent for deal research and shopping assistance."""
 
     def __init__(self):
-        system_prompt = """You are Krillin's Shopping Agent, specialized in finding the best deals and products.
+        system_prompt = """You are a Shopping Agent, specialized in finding the best deals and products.
 
         You help users with:
         - Product research and comparison
@@ -579,8 +573,7 @@ class ShoppingAgent(BaseClaudeAgent):
         - Quality assessment
 
         You research products thoroughly to find the best value.
-        Consider user's budget, preferences, and actual needs.
-        Use Krillin's practical and thoughtful approach to spending."""
+        Consider user's budget, preferences, and actual needs."""
 
         super().__init__(
             agent_name="Shopping Agent",

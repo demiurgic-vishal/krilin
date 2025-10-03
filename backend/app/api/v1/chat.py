@@ -281,6 +281,14 @@ async def send_message_stream(
                     full_response += event.content
                     yield f"data: {json.dumps(event_data)}\n\n"
 
+                elif event.event_type == "thinking":
+                    # Send thinking tokens
+                    thinking_data = {
+                        "type": "thinking",
+                        "content": event.content
+                    }
+                    yield f"data: {json.dumps(thinking_data)}\n\n"
+
                 elif event.event_type == "tool_use":
                     # Send tool usage notification
                     tool_data = {
@@ -289,6 +297,15 @@ async def send_message_stream(
                         "input": event.content.get("input")
                     }
                     yield f"data: {json.dumps(tool_data)}\n\n"
+
+                elif event.event_type == "tool_result":
+                    # Send tool result notification
+                    tool_result_data = {
+                        "type": "tool_result",
+                        "tool_use_id": event.content.get("tool_use_id"),
+                        "result": event.content.get("result")
+                    }
+                    yield f"data: {json.dumps(tool_result_data)}\n\n"
 
                 elif event.event_type == "result":
                     # Update metadata from result
@@ -335,6 +352,78 @@ async def send_message_stream(
     )
 
 
+@router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
+async def get_conversation(
+    conversation_id: int,
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+) -> Any:
+    """
+    Get a specific conversation.
+
+    Args:
+        conversation_id: Conversation ID
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        ConversationResponse: Conversation with messages
+
+    Raises:
+        HTTPException: If conversation not found or unauthorized
+    """
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.user_id == current_user.id
+        ).options(selectinload(Conversation.messages))
+    )
+    conversation = result.scalar_one_or_none()
+
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    return ConversationResponse.from_orm(conversation)
+
+
+@router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_conversation(
+    conversation_id: int,
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+) -> None:
+    """
+    Delete a conversation and all its messages.
+
+    Args:
+        conversation_id: Conversation ID
+        current_user: Current authenticated user
+        db: Database session
+
+    Raises:
+        HTTPException: If conversation not found or unauthorized
+    """
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.user_id == current_user.id
+        )
+    )
+    conversation = result.scalar_one_or_none()
+
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+
+    await db.delete(conversation)
+    await db.commit()
+
+
 @router.get("/conversations/{conversation_id}/messages", response_model=list[MessageResponse])
 async def get_messages(
     conversation_id: int,
@@ -345,17 +434,17 @@ async def get_messages(
 ) -> Any:
     """
     Get messages from a conversation.
-    
+
     Args:
         conversation_id: Conversation ID
         current_user: Current authenticated user
         db: Database session
         limit: Number of messages to return
         offset: Number of messages to skip
-        
+
     Returns:
         list[MessageResponse]: List of messages
-        
+
     Raises:
         HTTPException: If conversation not found or unauthorized
     """
@@ -367,13 +456,13 @@ async def get_messages(
         )
     )
     conversation = result.scalar_one_or_none()
-    
+
     if not conversation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found"
         )
-    
+
     # Get messages
     result = await db.execute(
         select(Message).where(
@@ -382,7 +471,7 @@ async def get_messages(
         .limit(limit).offset(offset)
     )
     messages = result.scalars().all()
-    
+
     return [MessageResponse.from_orm(msg) for msg in reversed(messages)]
 
 
