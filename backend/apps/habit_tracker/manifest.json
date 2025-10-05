@@ -1,0 +1,205 @@
+{
+  "metadata": {
+    "id": "habit-tracker",
+    "name": "Habit Tracker",
+    "description": "Track daily habits, build streaks, and visualize your progress. Never miss a day with smart reminders and insights.",
+    "version": "1.0.0",
+    "author": "Krilin",
+    "icon": "target",
+    "category": "productivity",
+    "tags": ["habits", "tracking", "productivity", "streaks"]
+  },
+  "code_module": "apps.habit_tracker.backend",
+  "dependencies": {
+    "apps": [],
+    "integrations": []
+  },
+  "outputs": [
+    {
+      "id": "daily_streaks",
+      "type": "data",
+      "description": "Current streaks for all active habits",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "habit_id": {"type": "string"},
+            "habit_name": {"type": "string"},
+            "streak": {"type": "integer"},
+            "last_completed": {"type": "string", "format": "date-time"}
+          }
+        }
+      }
+    },
+    {
+      "id": "completion_stats",
+      "type": "data",
+      "description": "Overall habit completion statistics",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "total_habits": {"type": "integer"},
+          "completed_today": {"type": "integer"},
+          "completion_rate": {"type": "number"}
+        }
+      }
+    }
+  ],
+  "agent_config": {
+    "enabled": true,
+    "system_prompt": "You are a Habit Coach AI, specialized in helping users build and maintain positive habits.\n\nYour role:\n- Help users create meaningful habits with clear goals\n- Provide encouragement and motivation\n- Analyze habit data to identify patterns\n- Suggest strategies to maintain streaks\n- Celebrate successes and help overcome setbacks\n\nYou have access to tools to:\n- View user's habits and streaks\n- Log habit completions\n- Get habit statistics and insights\n\nAlways be supportive, specific, and data-driven in your advice.",
+    "allowed_tools": ["WebSearch"],
+    "max_turns": 50,
+    "temperature": 0.7
+  },
+  "permissions": {
+    "data_read": ["habits", "habit_logs"],
+    "data_write": ["habits", "habit_logs"],
+    "integrations": [],
+    "notifications": true,
+    "files": false,
+    "schedule": true,
+    "ai": true
+  },
+  "database": {
+    "tables": [
+      {
+        "name": "habits",
+        "description": "User's habit definitions",
+        "schema": {
+          "name": "string",
+          "description": "string",
+          "frequency": "string",
+          "target_count": "integer",
+          "category": "string",
+          "color": "string",
+          "icon": "string",
+          "active": "boolean",
+          "archived_at": "datetime"
+        },
+        "indexes": [
+          {"fields": ["active"], "name": "idx_active"}
+        ]
+      },
+      {
+        "name": "habit_logs",
+        "description": "Habit completion logs",
+        "schema": {
+          "habit_id": "string",
+          "completed_at": "datetime",
+          "notes": "string",
+          "mood": "string",
+          "duration_minutes": "integer"
+        },
+        "indexes": [
+          {"fields": ["habit_id"], "name": "idx_habit_id"},
+          {"fields": ["completed_at"], "name": "idx_completed_at"}
+        ]
+      }
+    ]
+  },
+  "ui": {
+    "widgets": [
+      {
+        "id": "streak_widget",
+        "name": "Habit Streaks",
+        "description": "Show current streaks for all habits",
+        "sizes": ["small", "medium"],
+        "default_size": "medium"
+      },
+      {
+        "id": "quick_log_widget",
+        "name": "Quick Log",
+        "description": "One-tap habit logging",
+        "sizes": ["small"],
+        "default_size": "small"
+      }
+    ],
+    "pages": [
+      {
+        "id": "main",
+        "name": "Habits",
+        "route": "/apps/habit-tracker",
+        "description": "Main habit tracking interface"
+      },
+      {
+        "id": "stats",
+        "name": "Statistics",
+        "route": "/apps/habit-tracker/stats",
+        "description": "Detailed analytics and insights"
+      }
+    ],
+    "settings": [
+      {
+        "id": "reminder_time",
+        "type": "time",
+        "label": "Daily Reminder Time",
+        "default": "09:00"
+      },
+      {
+        "id": "week_start",
+        "type": "select",
+        "label": "Week Starts On",
+        "options": ["sunday", "monday"],
+        "default": "monday"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "get_habits",
+      "name": "Get Habits",
+      "description": "Get all active habits for the user",
+      "parameters": {
+        "include_archived": {
+          "type": "boolean",
+          "description": "Include archived habits",
+          "required": false,
+          "default": false
+        }
+      }
+    },
+    {
+      "id": "create_habit",
+      "name": "Create Habit",
+      "description": "Create a new habit",
+      "parameters": {
+        "name": {"type": "string", "description": "Habit name", "required": true},
+        "description": {"type": "string", "description": "Habit description", "required": false},
+        "frequency": {"type": "string", "description": "daily, weekly, or custom", "required": true},
+        "target_count": {"type": "integer", "description": "Target count per period", "required": false, "default": 1},
+        "category": {"type": "string", "description": "Category", "required": false},
+        "color": {"type": "string", "description": "Color code", "required": false},
+        "icon": {"type": "string", "description": "Icon name", "required": false}
+      }
+    },
+    {
+      "id": "log_habit",
+      "name": "Log Habit",
+      "description": "Log completion of a habit",
+      "parameters": {
+        "habit_id": {"type": "string", "description": "Habit ID", "required": true},
+        "notes": {"type": "string", "description": "Optional notes", "required": false},
+        "mood": {"type": "string", "description": "Mood after completing", "required": false},
+        "duration_minutes": {"type": "integer", "description": "Duration in minutes", "required": false}
+      }
+    },
+    {
+      "id": "calculate_streak",
+      "name": "Calculate Streak",
+      "description": "Calculate current streak for a habit",
+      "parameters": {
+        "habit_id": {"type": "string", "description": "Habit ID", "required": true}
+      }
+    },
+    {
+      "id": "get_stats",
+      "name": "Get Statistics",
+      "description": "Get habit statistics for a time period",
+      "parameters": {
+        "period": {"type": "string", "description": "week, month, or year", "required": false, "default": "week"}
+      }
+    }
+  ]
+}

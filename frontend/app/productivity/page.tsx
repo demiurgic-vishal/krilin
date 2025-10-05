@@ -52,19 +52,16 @@ export default function ProductivityPage() {
       <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
-            <Link href="/">
+            <Link href="/dashboard">
               <Button variant="ghost" size="icon">
-                <ArrowLeft size={24} />
+                <Home size={24} />
               </Button>
             </Link>
-            <div className="flex-1">
+            <div>
               <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
-                Productivity Dojo
+                Productivity
               </h1>
-              <p className="text-sm text-[var(--muted-foreground)] mt-1">Even without superhuman powers, we can achieve amazing things with the right techniques!</p>
-              <p className="text-center text-[var(--primary)] font-[var(--font-head)] text-sm mt-2">
-                "I've always relied on training smart, not just hard. That's how I keep up with the Saiyans!" - Krillin
-              </p>
+              <p className="text-sm text-[var(--muted-foreground)] mt-1">Tools to maximize your effectiveness</p>
             </div>
           </div>
         </div>

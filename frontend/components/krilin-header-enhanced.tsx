@@ -6,7 +6,7 @@ import KrilinLogo from "./krilin-logo"
 import KrilinButtonEnhanced from "./krilin-button-enhanced"
 import { PixelLoader } from "./ui/pixel-loader"
 import { useGlitchEffect, useRandomPixelMovement } from "@/hooks/use-animations"
-import { Menu, X, Home, Brain, Zap, Settings } from "lucide-react"
+import { Menu, X, Home, Brain, Zap, Settings, Sparkles } from "lucide-react"
 
 interface KrilinHeaderEnhancedProps {
   showPowerLevel?: boolean
@@ -59,6 +59,7 @@ export default function KrilinHeaderEnhanced({
     { href: "/", label: "HOME", icon: Home, active: currentPath === "/" },
     { href: "/dashboard", label: "DASHBOARD", icon: Brain, active: currentPath === "/dashboard" },
     { href: "/chat", label: "CHAT", icon: Zap, active: currentPath === "/chat" },
+    { href: "/apps", label: "APPS", icon: Sparkles, active: currentPath === "/apps" },
     { href: "/settings", label: "SETTINGS", icon: Settings, active: currentPath === "/settings" },
   ]
 

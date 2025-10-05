@@ -4,11 +4,111 @@ import { useState, useEffect, useRef, memo, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import ReactMarkdown from "react-markdown"
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { useAuth } from "@/lib/auth/AuthContext"
 import { useStreamingMessage, useConversations } from "@/lib/hooks/useChat"
 import { Button } from "@/components/retroui/Button"
 import { Input } from "@/components/retroui/Input"
+import { AnimatedTitle } from "@/components/AnimatedTitle"
 import { Home, Plus, MessageSquare, Send, Trash2, Loader2, Paperclip, X } from "lucide-react"
+
+// Retro terminal-style code theme (dark background for all modes)
+const retroCodeTheme = {
+  'code[class*="language-"]': {
+    color: '#f5f5f5',
+    background: '#2d2d2d',
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    fontSize: '0.875rem',
+    textAlign: 'left' as const,
+    whiteSpace: 'pre' as const,
+    wordSpacing: 'normal',
+    wordBreak: 'normal',
+    wordWrap: 'normal',
+    lineHeight: '1.6',
+    tabSize: 2,
+    hyphens: 'none' as const,
+  },
+  'pre[class*="language-"]': {
+    color: '#f5f5f5',
+    background: '#2d2d2d',
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    fontSize: '0.875rem',
+    textAlign: 'left' as const,
+    whiteSpace: 'pre' as const,
+    wordSpacing: 'normal',
+    wordBreak: 'normal',
+    wordWrap: 'normal',
+    lineHeight: '1.6',
+    tabSize: 2,
+    hyphens: 'none' as const,
+    padding: '1em',
+    margin: '0',
+    overflow: 'auto',
+  },
+  'comment': { color: '#a0a0a0', fontStyle: 'italic' },
+  'prolog': { color: '#a0a0a0' },
+  'doctype': { color: '#a0a0a0' },
+  'cdata': { color: '#a0a0a0' },
+  'punctuation': { color: '#f5f5f5' },
+  'property': { color: '#ff6b7a', fontWeight: 'bold' },
+  'tag': { color: '#ff6b7a', fontWeight: 'bold' },
+  'boolean': { color: '#00ffe5', fontWeight: 'bold' },
+  'number': { color: '#00ffe5', fontWeight: 'bold' },
+  'constant': { color: '#00ffe5', fontWeight: 'bold' },
+  'symbol': { color: '#00ffe5' },
+  'deleted': { color: '#ff6b7a' },
+  'selector': { color: '#b8b1ff', fontWeight: 'bold' },
+  'attr-name': { color: '#b8b1ff' },
+  'string': { color: '#fffa65' },
+  'char': { color: '#fffa65' },
+  'builtin': { color: '#ffc799', fontWeight: 'bold' },
+  'inserted': { color: '#00ffe5' },
+  'operator': { color: '#ffd700', fontWeight: 'bold' },
+  'entity': { color: '#ffd700' },
+  'url': { color: '#b8b1ff' },
+  'variable': { color: '#ffc799' },
+  'atrule': { color: '#ff6b7a', fontWeight: 'bold' },
+  'attr-value': { color: '#fffa65' },
+  'function': { color: '#ffd700', fontWeight: 'bold' },
+  'class-name': { color: '#ffc799', fontWeight: 'bold' },
+  'keyword': { color: '#ff6b7a', fontWeight: 'bold' },
+  'regex': { color: '#b8b1ff' },
+  'important': { color: '#ff6b7a', fontWeight: 'bold' },
+}
+
+// Code block wrapper component
+const CodeBlock = ({ language, children }: { language: string; children: string }) => (
+  <div className="my-3 border-2 border-[var(--border)] shadow-[3px_3px_0_0_var(--border)] overflow-hidden">
+    {/* Terminal header bar */}
+    <div className="bg-[var(--primary)] text-[var(--primary-foreground)] px-3 py-1 border-b-2 border-[var(--border)] flex items-center justify-between">
+      <span className="text-xs font-bold uppercase font-[var(--font-head)]">{language || 'code'}</span>
+      <div className="flex gap-1.5">
+        <div className="w-2.5 h-2.5 bg-[var(--destructive)] border border-[var(--border)]"></div>
+        <div className="w-2.5 h-2.5 bg-[var(--warning)] border border-[var(--border)]"></div>
+        <div className="w-2.5 h-2.5 bg-[var(--success)] border border-[var(--border)]"></div>
+      </div>
+    </div>
+    {/* Code content */}
+    <SyntaxHighlighter
+      style={retroCodeTheme}
+      language={language || 'text'}
+      PreTag="div"
+      customStyle={{
+        margin: 0,
+        borderRadius: 0,
+        background: '#2d2d2d',
+        border: 'none',
+      }}
+      codeTagProps={{
+        style: {
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        }
+      }}
+    >
+      {children}
+    </SyntaxHighlighter>
+  </div>
+)
 
 // Memoized Message Component to prevent re-renders
 const MessageBubble = memo(({ message, index }: { message: { role: 'user' | 'assistant', content: string, timestamp: string, thinking?: string, toolCalls?: Array<{ tool: string; input: any }> }, index: number }) => {
@@ -67,14 +167,20 @@ const MessageBubble = memo(({ message, index }: { message: { role: 'user' | 'ass
                   <ReactMarkdown
                     components={{
                       code({ node, inline, className, children, ...props }: any) {
-                        return !inline ? (
-                          <pre className="bg-[var(--background)] p-2 my-1 border border-[var(--border)] overflow-x-auto">
+                        const match = /language-(\w+)/.exec(className || '')
+                        const language = match ? match[1] : ''
+                        return !inline && language ? (
+                          <CodeBlock language={language}>
+                            {String(children).replace(/\n$/, '')}
+                          </CodeBlock>
+                        ) : !inline ? (
+                          <pre className="bg-[#2d2d2d] text-[#f5f5f5] p-2 my-2 border-2 border-[var(--border)] shadow-[2px_2px_0_0_var(--border)] overflow-x-auto">
                             <code className="text-xs font-mono" {...props}>
                               {children}
                             </code>
                           </pre>
                         ) : (
-                          <code className="bg-[var(--background)] px-1 py-0.5 border border-[var(--border)] text-xs font-mono" {...props}>
+                          <code className="bg-[#2d2d2d] text-[#ffd700] px-1.5 py-0.5 border border-[var(--border)] text-xs font-mono font-bold" {...props}>
                             {children}
                           </code>
                         )
@@ -99,14 +205,20 @@ const MessageBubble = memo(({ message, index }: { message: { role: 'user' | 'ass
             <ReactMarkdown
               components={{
                 code({ node, inline, className, children, ...props }: any) {
-                  return !inline ? (
-                    <pre className="bg-[var(--muted)] p-3 my-2 border-2 border-[var(--border)] shadow-[2px_2px_0_0_var(--border)] overflow-x-auto">
+                  const match = /language-(\w+)/.exec(className || '')
+                  const language = match ? match[1] : ''
+                  return !inline && language ? (
+                    <CodeBlock language={language}>
+                      {String(children).replace(/\n$/, '')}
+                    </CodeBlock>
+                  ) : !inline ? (
+                    <pre className="bg-[#2d2d2d] text-[#f5f5f5] p-3 my-2 border-2 border-[var(--border)] shadow-[3px_3px_0_0_var(--border)] overflow-x-auto">
                       <code className="text-sm font-mono" {...props}>
                         {children}
                       </code>
                     </pre>
                   ) : (
-                    <code className="bg-[var(--muted)] px-1 py-0.5 border border-[var(--border)] text-sm font-mono" {...props}>
+                    <code className="bg-[#2d2d2d] text-[#ffd700] px-1.5 py-0.5 border border-[var(--border)] text-sm font-mono font-bold" {...props}>
                       {children}
                     </code>
                   )
@@ -150,9 +262,10 @@ export default function ConversationPage() {
   const params = useParams()
   const conversationId = params.id ? parseInt(params.id as string) : null
   const { user, loading: authLoading } = useAuth()
-  const { conversations, loading: conversationsLoading, refetch } = useConversations({ limit: 20 })
+  const { conversations, loading: conversationsLoading, refetch, updateConversationTitle } = useConversations({ limit: 20 })
   const { sendStreamingMessage, loading: sendingMessage } = useStreamingMessage()
 
+  const [lastUpdatedConversationId, setLastUpdatedConversationId] = useState<number | null>(null)
   const [messages, setMessages] = useState<Array<{
     role: 'user' | 'assistant'
     content: string
@@ -162,6 +275,7 @@ export default function ConversationPage() {
   }>>([])
   const [currentThinking, setCurrentThinking] = useState<string>('')
   const [currentToolCalls, setCurrentToolCalls] = useState<Array<{ tool: string; input: any }>>([])
+  const [responseComplete, setResponseComplete] = useState<boolean>(true) // Track if AI response is complete
   const [showSidebar, setShowSidebar] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('chatSidebarOpen')
@@ -185,7 +299,7 @@ export default function ConversationPage() {
       const conv = await apiClient.getConversation(convId)
 
       if (conv && conv.messages) {
-        setMessages(conv.messages.map(msg => ({
+        setMessages(conv.messages.map((msg: any) => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
           timestamp: new Date(msg.created_at).toLocaleTimeString()
@@ -283,6 +397,7 @@ export default function ConversationPage() {
     hasAddedMessageRef.current = false
     setCurrentThinking('')
     setCurrentToolCalls([])
+    setResponseComplete(false) // Mark response as incomplete
 
     try {
       await sendStreamingMessage({
@@ -295,6 +410,13 @@ export default function ConversationPage() {
         },
         onToolUse: (tool: string, input: any) => {
           setCurrentToolCalls(prev => [...prev, { tool, input }])
+        },
+        onTitleUpdate: (newTitle: string) => {
+          // Update conversation title in sidebar immediately
+          if (conversationId) {
+            updateConversationTitle(conversationId, newTitle)
+            setLastUpdatedConversationId(conversationId)
+          }
         },
         onToken: (token: string) => {
           setMessages(prev => {
@@ -354,6 +476,10 @@ export default function ConversationPage() {
               return updated
             }
           })
+
+          // Mark response as complete - hides "Processing..." indicator
+          setResponseComplete(true)
+
           // Clear after adding to message
           setCurrentThinking('')
           setCurrentToolCalls([])
@@ -378,6 +504,10 @@ export default function ConversationPage() {
               return updated
             }
           })
+          // Ensure any active indicators are cleared on error
+          setResponseComplete(true)
+          setCurrentThinking('')
+          setCurrentToolCalls([])
         }
       }).then(() => {
         refetch()
@@ -426,7 +556,7 @@ export default function ConversationPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <Link href="/">
+              <Link href="/dashboard">
                 <Button variant="ghost" size="icon">
                   <Home size={24} />
                 </Button>
@@ -483,7 +613,7 @@ export default function ConversationPage() {
                           <div className="flex gap-2">
                             <Button
                               size="sm"
-                              variant="danger"
+                              variant="destructive"
                               onClick={() => handleDeleteConversation(conv.id)}
                             >
                               Delete
@@ -507,11 +637,32 @@ export default function ConversationPage() {
                                 : 'bg-[var(--card)] hover:shadow-[2px_2px_0_0_var(--border)] hover:translate-x-[-1px] hover:translate-y-[-1px]'
                             }`}
                           >
-                            <div className="font-bold text-sm truncate pr-8">{conv.title}</div>
-                            <div className="text-xs opacity-70 mt-1 truncate">
-                              {conv.messages.length > 0
-                                ? conv.messages[conv.messages.length - 1].content.substring(0, 50) + '...'
-                                : 'No messages yet'}
+                            <div className="font-bold text-sm pr-8 overflow-hidden">
+                              <AnimatedTitle key={conv.id} title={conv.title} animateOnMount={lastUpdatedConversationId === conv.id} />
+                            </div>
+                            <div className="text-xs opacity-70 mt-1 line-clamp-2 prose prose-sm max-w-none">
+                              {conv.messages.length > 0 ? (
+                                <ReactMarkdown
+                                  components={{
+                                    code: ({ children }) => <code className="bg-[var(--muted)] px-1 text-xs">{children}</code>,
+                                    p: ({ children }) => <span>{children}</span>,
+                                    ul: ({ children }) => <span>{children}</span>,
+                                    ol: ({ children }) => <span>{children}</span>,
+                                    li: ({ children }) => <span>{children} </span>,
+                                    h1: ({ children }) => <span className="font-bold">{children}</span>,
+                                    h2: ({ children }) => <span className="font-bold">{children}</span>,
+                                    h3: ({ children }) => <span className="font-bold">{children}</span>,
+                                    strong: ({ children }) => <strong>{children}</strong>,
+                                    em: ({ children }) => <em>{children}</em>,
+                                    a: ({ children }) => <span>{children}</span>,
+                                    blockquote: ({ children }) => <span>{children}</span>,
+                                  }}
+                                >
+                                  {conv.messages[conv.messages.length - 1].content.substring(0, 80)}
+                                </ReactMarkdown>
+                              ) : (
+                                'No messages yet'
+                              )}
                             </div>
                           </button>
                           <button
@@ -551,7 +702,7 @@ export default function ConversationPage() {
                 {messages.map((message, index) => (
                   <MessageBubble key={index} message={message} index={index} />
                 ))}
-                {sendingMessage && (
+                {!responseComplete && (
                   <div className="flex justify-start">
                     <div className="max-w-[75%] p-4 border-2 border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-[2px_2px_0_0_var(--border)]">
                       <div className="text-xs opacity-70 mb-2 uppercase">Assistant</div>
@@ -563,14 +714,20 @@ export default function ConversationPage() {
                             <ReactMarkdown
                               components={{
                                 code({ node, inline, className, children, ...props }: any) {
-                                  return !inline ? (
-                                    <pre className="bg-[var(--background)] p-2 my-1 border border-[var(--border)] overflow-x-auto">
+                                  const match = /language-(\w+)/.exec(className || '')
+                                  const language = match ? match[1] : ''
+                                  return !inline && language ? (
+                                    <CodeBlock language={language}>
+                                      {String(children).replace(/\n$/, '')}
+                                    </CodeBlock>
+                                  ) : !inline ? (
+                                    <pre className="bg-[#2d2d2d] text-[#f5f5f5] p-2 my-2 border-2 border-[var(--border)] shadow-[2px_2px_0_0_var(--border)] overflow-x-auto">
                                       <code className="text-xs font-mono" {...props}>
                                         {children}
                                       </code>
                                     </pre>
                                   ) : (
-                                    <code className="bg-[var(--background)] px-1 py-0.5 border border-[var(--border)] text-xs font-mono" {...props}>
+                                    <code className="bg-[#2d2d2d] text-[#ffd700] px-1.5 py-0.5 border border-[var(--border)] text-xs font-mono font-bold" {...props}>
                                       {children}
                                     </code>
                                   )

@@ -1,0 +1,161 @@
+{
+  "metadata": {
+    "id": "calendar-events",
+    "name": "Calendar Events",
+    "description": "View your Google Calendar events in a beautifully formatted timeline. Stay organized with a clean view of your upcoming meetings and events.",
+    "version": "1.0.0",
+    "author": "Krilin",
+    "icon": "calendar",
+    "category": "productivity",
+    "tags": ["calendar", "events", "google", "scheduling"]
+  },
+  "code_module": "apps.calendar_events.backend",
+  "dependencies": {
+    "apps": [],
+    "integrations": ["google_calendar"]
+  },
+  "outputs": [
+    {
+      "id": "upcoming_events",
+      "type": "data",
+      "description": "Upcoming calendar events",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {"type": "string"},
+            "title": {"type": "string"},
+            "start": {"type": "string", "format": "date-time"},
+            "end": {"type": "string", "format": "date-time"},
+            "location": {"type": "string"},
+            "attendees": {"type": "array"}
+          }
+        }
+      }
+    },
+    {
+      "id": "today_summary",
+      "type": "data",
+      "description": "Summary of today's events",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "total_events": {"type": "integer"},
+          "next_event": {"type": "object"},
+          "busy_hours": {"type": "integer"}
+        }
+      }
+    }
+  ],
+  "agent_config": {
+    "enabled": true,
+    "system_prompt": "You are a Calendar Assistant AI, specialized in helping users manage their schedule and events.\n\nYour role:\n- Help users understand their calendar\n- Provide summaries of upcoming events\n- Answer questions about schedule conflicts\n- Suggest optimal meeting times\n- Identify patterns in calendar usage\n\nYou have access to:\n- View calendar events\n- Get event details\n- Analyze schedule patterns\n\nAlways be clear, concise, and helpful with scheduling information.",
+    "allowed_tools": ["WebSearch"],
+    "max_turns": 50,
+    "temperature": 0.7
+  },
+  "permissions": {
+    "data_read": ["calendar_events"],
+    "data_write": [],
+    "integrations": ["google_calendar"],
+    "notifications": true,
+    "files": false,
+    "schedule": true,
+    "ai": true
+  },
+  "database": {
+    "tables": []
+  },
+  "ui": {
+    "widgets": [
+      {
+        "id": "next_event_widget",
+        "name": "Next Event",
+        "description": "Show your next upcoming event",
+        "sizes": ["small", "medium"],
+        "default_size": "small"
+      },
+      {
+        "id": "day_timeline_widget",
+        "name": "Day Timeline",
+        "description": "Today's events timeline",
+        "sizes": ["medium", "large"],
+        "default_size": "medium"
+      }
+    ],
+    "pages": [
+      {
+        "id": "main",
+        "name": "Calendar Events",
+        "route": "/apps/calendar-events",
+        "description": "View your calendar events"
+      }
+    ],
+    "settings": [
+      {
+        "id": "days_ahead",
+        "type": "number",
+        "label": "Days to Show",
+        "default": 7,
+        "min": 1,
+        "max": 30
+      },
+      {
+        "id": "show_declined",
+        "type": "boolean",
+        "label": "Show Declined Events",
+        "default": false
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "get_events",
+      "name": "Get Events",
+      "description": "Get calendar events for a date range",
+      "parameters": {
+        "start_date": {
+          "type": "string",
+          "description": "Start date (ISO format)",
+          "required": false
+        },
+        "end_date": {
+          "type": "string",
+          "description": "End date (ISO format)",
+          "required": false
+        },
+        "max_results": {
+          "type": "integer",
+          "description": "Maximum number of events",
+          "required": false,
+          "default": 50
+        }
+      }
+    },
+    {
+      "id": "get_today_events",
+      "name": "Get Today's Events",
+      "description": "Get all events for today",
+      "parameters": {}
+    },
+    {
+      "id": "get_next_event",
+      "name": "Get Next Event",
+      "description": "Get the next upcoming event",
+      "parameters": {}
+    },
+    {
+      "id": "search_events",
+      "name": "Search Events",
+      "description": "Search for events by keyword",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "description": "Search query",
+          "required": true
+        }
+      }
+    }
+  ]
+}

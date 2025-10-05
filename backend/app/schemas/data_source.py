@@ -52,6 +52,7 @@ class DataSourceResponse(DataSourceBase):
     total_syncs: int
     successful_syncs: int
     failed_syncs: int
+    record_count: int = Field(default=0, description="Total number of records synced")
     created_at: datetime
     updated_at: datetime
 

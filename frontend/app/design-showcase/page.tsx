@@ -26,7 +26,7 @@ export default function DesignShowcase() {
       <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
-            <Link href="/">
+            <Link href="/dashboard">
               <Button variant="ghost" size="icon">
                 <ArrowLeft size={24} />
               </Button>
@@ -70,7 +70,7 @@ export default function DesignShowcase() {
               Bouncy
             </Button>
 
-            <Button variant="danger" className="animate-levelUp">
+            <Button variant="destructive" className="animate-levelUp">
               Level Up!
             </Button>
 

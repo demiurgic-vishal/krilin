@@ -25,8 +25,71 @@ from app.schemas.chat import (
 )
 from app.services.claude_agent_service import get_agent_by_type  # Using Claude Agent SDK service
 from app.services.conversation_compactor import get_conversation_compactor
+from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions, AssistantMessage, TextBlock
 
 router = APIRouter()
+
+
+# Permission handler for title generation (auto-approve all tools)
+async def auto_approve_all_tools(tool_name: str, input_data: dict, context: dict):
+    """Auto-approve all tool usage without prompts."""
+    return {
+        "behavior": "allow",
+        "updatedInput": input_data
+    }
+
+
+async def generate_conversation_title_claude(user_message: str, ai_response: str) -> str:
+    """
+    Generate a concise title for a conversation using Claude AI.
+    This is meant to be called in background.
+
+    Args:
+        user_message: The first user message
+        ai_response: The AI's response
+
+    Returns:
+        A short, descriptive title (max 50 characters)
+    """
+    try:
+        # Create prompt for title generation
+        prompt = f"""Based on this conversation, generate a short, descriptive title (max 6 words).
+
+User: {user_message[:200]}
+Assistant: {ai_response[:200]}
+
+Return ONLY the title, nothing else. Make it concise and descriptive."""
+
+        # Use Claude Agent SDK to generate title (matching working agent setup)
+        agent_options = ClaudeAgentOptions(
+            model="sonnet",
+            max_turns=1,
+            permission_mode="acceptEdits",  # Match working agent setup
+            can_use_tool=auto_approve_all_tools  # Auto-approve all tool usage
+        )
+
+        content_parts = []
+        async with ClaudeSDKClient(options=agent_options) as client:
+            await client.query(prompt)
+            async for message in client.receive_response():
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            content_parts.append(block.text)
+
+        title = "\n".join(content_parts).strip()
+
+        # Clean up and limit length
+        title = title.replace('"', '').replace("'", '').strip()
+        if len(title) > 50:
+            title = title[:47] + "..."
+
+        return title if title else "New Conversation"
+
+    except Exception as e:
+        # Fallback to first few words of user message
+        words = user_message.split()[:6]
+        return " ".join(words) + ("..." if len(user_message.split()) > 6 else "")
 
 # Upload directory configuration
 UPLOAD_DIR = Path("/app/uploads")
@@ -201,9 +264,20 @@ async def send_message(
         if ai_response.context_updates:
             conversation.context.update(ai_response.context_updates)
             conversation.goals_discussed.extend(ai_response.goals_mentioned or [])
-        
+
         conversation.last_message_at = user_message.created_at
-        
+
+        # Generate conversation title if this is "New Conversation" (auto-rename)
+        if conversation.title == "New Conversation":
+            try:
+                conversation.title = await generate_conversation_title_claude(
+                    user_message=chat_request.message,
+                    ai_response=ai_response.content
+                )
+            except Exception:
+                # Keep "New Conversation" if title generation fails
+                pass
+
         await db.commit()
         await db.refresh(ai_message)
         
@@ -272,6 +346,9 @@ async def send_message_stream(
         """Generate SSE events for streaming response."""
         full_response = ""
         metadata = {}
+
+        import logging
+        logger = logging.getLogger(__name__)
 
         try:
             # Get AI agent and compactor
@@ -361,6 +438,7 @@ async def send_message_stream(
                     metadata.update(event.metadata)
 
             # Save AI response to database (sanitize to remove null bytes)
+            logger.info(f"[STREAM] Saving AI message for conversation {conversation_id}")
             ai_message = Message(
                 conversation_id=conversation_id,
                 role="assistant",
@@ -371,15 +449,53 @@ async def send_message_stream(
 
             # Update conversation
             conversation.last_message_at = user_message.created_at
+            logger.info(f"[STREAM] Committing changes to database")
             await db.commit()
+            logger.info(f"[STREAM] Commit successful")
 
-            # Send completion event
+            # Send completion event first
             completion_data = {
                 "type": "done",
                 "content": full_response,
                 "metadata": metadata
             }
             yield f"data: {json.dumps(completion_data)}\n\n"
+
+            # Generate conversation title AFTER completion event (if this is "New Conversation")
+            # We need to re-query the conversation to get a fresh instance
+            logger.info(f"[TITLE CHECK] Checking if title needs generation")
+            result = await db.execute(
+                select(Conversation).where(Conversation.id == conversation_id)
+            )
+            fresh_conversation = result.scalar_one_or_none()
+
+            if fresh_conversation and fresh_conversation.title == "New Conversation":
+                try:
+                    logger.info(f"[TITLE GEN] Starting title generation for conversation {conversation_id}")
+
+                    new_title = await generate_conversation_title_claude(
+                        user_message=chat_request.message,
+                        ai_response=full_response
+                    )
+
+                    logger.info(f"[TITLE GEN] Generated title: {new_title}")
+
+                    # Update title in database
+                    fresh_conversation.title = new_title
+                    await db.commit()
+
+                    logger.info(f"[TITLE GEN] Title saved to database")
+
+                    # Send title update event
+                    title_update_data = {
+                        "type": "title_update",
+                        "title": new_title
+                    }
+                    yield f"data: {json.dumps(title_update_data)}\n\n"
+                    logger.info(f"[TITLE GEN] Title update event sent to frontend")
+                except Exception as e:
+                    # Log the error for debugging
+                    logger.error(f"[TITLE GEN] Error generating title: {str(e)}", exc_info=True)
 
         except Exception as e:
             # Send error event

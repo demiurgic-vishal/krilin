@@ -8,7 +8,8 @@ import { useGoals } from "@/lib/hooks/useGoals"
 import { useConversations } from "@/lib/hooks/useChat"
 import { Card } from "@/components/retroui/Card"
 import { Button } from "@/components/retroui/Button"
-import { MessageSquare, Target, Zap, Settings, TrendingUp, Activity, Home } from "lucide-react"
+import { MessageSquare, Target, Zap, Settings, TrendingUp, Activity, Home, Sparkles, Users, Globe, Database } from "lucide-react"
+import ReactMarkdown from "react-markdown"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -52,9 +53,12 @@ export default function DashboardPage() {
                   <Home size={24} />
                 </Button>
               </Link>
-              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
-                Dashboard
-              </h1>
+              <div>
+                <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                  Dashboard
+                </h1>
+                <p className="text-sm text-[var(--muted-foreground)] mt-1">Your command center</p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-[var(--muted-foreground)]">
@@ -94,7 +98,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="border-2 border-[var(--border)] bg-[var(--accent)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+          <div className="border-2 border-[var(--border)] bg-[var(--warning)] p-6 shadow-[4px_4px_0_0_var(--border)]">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-4xl font-bold mb-1">{conversations.length}</div>
@@ -108,7 +112,7 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="mb-12">
           <h2 className="text-2xl font-[var(--font-head)] mb-6 uppercase">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Link href="/chat">
               <Button variant="default" className="w-full h-16">
                 <MessageSquare size={20} className="mr-2" />
@@ -121,14 +125,26 @@ export default function DashboardPage() {
                 Goals
               </Button>
             </Link>
-            <Link href="/workflows">
+            <Link href="/apps">
+              <Button variant="warning" className="w-full h-16">
+                <Sparkles size={20} className="mr-2" />
+                Apps
+              </Button>
+            </Link>
+            <Link href="/data-sources">
+              <Button variant="info" className="w-full h-16">
+                <Database size={20} className="mr-2" />
+                Data Sources
+              </Button>
+            </Link>
+            <Link href="/integrations">
               <Button variant="accent" className="w-full h-16">
-                <Zap size={20} className="mr-2" />
-                Workflows
+                <Globe size={20} className="mr-2" />
+                Integrations
               </Button>
             </Link>
             <Link href="/settings">
-              <Button variant="secondary" className="w-full h-16">
+              <Button variant="outline" className="w-full h-16">
                 <Settings size={20} className="mr-2" />
                 Settings
               </Button>
@@ -207,10 +223,29 @@ export default function DashboardPage() {
                     <Link href={`/chat/${convo.id}`} key={convo.id}>
                       <div className="p-4 border-2 border-[var(--border)] hover:shadow-[4px_4px_0_0_var(--border)] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] cursor-pointer">
                         <div className="font-bold mb-2">{convo.title}</div>
-                        <div className="text-sm text-[var(--muted-foreground)] truncate">
-                          {convo.messages.length > 0
-                            ? convo.messages[convo.messages.length - 1].content.substring(0, 100) + '...'
-                            : 'No messages yet'}
+                        <div className="text-sm text-[var(--muted-foreground)] line-clamp-2 prose prose-sm max-w-none">
+                          {convo.messages.length > 0 ? (
+                            <ReactMarkdown
+                              components={{
+                                code: ({ children }) => <code className="bg-[var(--muted)] px-1 border border-[var(--border)] text-xs">{children}</code>,
+                                p: ({ children }) => <span>{children}</span>,
+                                ul: ({ children }) => <span>{children}</span>,
+                                ol: ({ children }) => <span>{children}</span>,
+                                li: ({ children }) => <span>{children} </span>,
+                                h1: ({ children }) => <span className="font-bold">{children}</span>,
+                                h2: ({ children }) => <span className="font-bold">{children}</span>,
+                                h3: ({ children }) => <span className="font-bold">{children}</span>,
+                                strong: ({ children }) => <strong>{children}</strong>,
+                                em: ({ children }) => <em>{children}</em>,
+                                a: ({ children }) => <span>{children}</span>,
+                                blockquote: ({ children }) => <span>{children}</span>,
+                              }}
+                            >
+                              {convo.messages[convo.messages.length - 1].content.substring(0, 150)}
+                            </ReactMarkdown>
+                          ) : (
+                            'No messages yet'
+                          )}
                         </div>
                         <div className="text-xs text-[var(--muted-foreground)] mt-2">
                           {convo.last_message_at

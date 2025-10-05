@@ -51,14 +51,17 @@ export default function GoalsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <Link href="/">
+              <Link href="/dashboard">
                 <Button variant="ghost" size="icon">
                   <Home size={24} />
                 </Button>
               </Link>
-              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
-                Goals
-              </h1>
+              <div>
+                <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                  Goals
+                </h1>
+                <p className="text-sm text-[var(--muted-foreground)] mt-1">Track and achieve objectives</p>
+              </div>
             </div>
             <Link href="/goals/new">
               <Button size="sm">
@@ -72,7 +75,7 @@ export default function GoalsPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <div className="border-2 border-[var(--border)] bg-[var(--primary)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+          <div className="border-2 border-[var(--border)] bg-[var(--accent)] p-6 shadow-[4px_4px_0_0_var(--border)]">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-4xl font-bold mb-1">{goals.length}</div>
@@ -82,7 +85,7 @@ export default function GoalsPage() {
             </div>
           </div>
 
-          <div className="border-2 border-[var(--border)] bg-[var(--success)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+          <div className="border-2 border-[var(--border)] bg-[var(--primary)] p-6 shadow-[4px_4px_0_0_var(--border)]">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-4xl font-bold mb-1">{activeGoals.length}</div>
@@ -92,7 +95,7 @@ export default function GoalsPage() {
             </div>
           </div>
 
-          <div className="border-2 border-[var(--border)] bg-[var(--info)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+          <div className="border-2 border-[var(--border)] bg-[var(--success)] p-6 shadow-[4px_4px_0_0_var(--border)]">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-4xl font-bold mb-1">{completedGoals.length}</div>
@@ -102,7 +105,7 @@ export default function GoalsPage() {
             </div>
           </div>
 
-          <div className="border-2 border-[var(--border)] bg-[var(--accent)] p-6 shadow-[4px_4px_0_0_var(--border)]">
+          <div className="border-2 border-[var(--border)] bg-[var(--warning)] p-6 shadow-[4px_4px_0_0_var(--border)]">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-4xl font-bold mb-1">
@@ -110,6 +113,7 @@ export default function GoalsPage() {
                 </div>
                 <div className="text-sm uppercase font-medium">Success</div>
               </div>
+              <Clock size={48} className="opacity-50" />
             </div>
           </div>
         </div>

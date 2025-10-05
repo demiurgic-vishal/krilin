@@ -2,6 +2,8 @@
 Main FastAPI application for Krilin AI Backend.
 LLM-friendly structure with clear routing and middleware.
 """
+import logging
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,9 +12,19 @@ from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.admin import setup_admin
-from app.api.v1 import auth, chat, data_sources, workflows, goals, community
+from app.api.v1 import auth, chat, data_sources, goals, community, apps
 from app.config import settings
 from app.database import close_db, init_db
+
+# Configure logging to stdout
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -66,7 +78,7 @@ admin = setup_admin(app)
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["ai-chat"])
 app.include_router(data_sources.router, prefix="/api/v1/data-sources", tags=["data-integration"])
-app.include_router(workflows.router, prefix="/api/v1/workflows", tags=["workflows"])
+app.include_router(apps.router, prefix="/api/v1/apps", tags=["apps"])
 app.include_router(goals.router, prefix="/api/v1/goals", tags=["goals"])
 app.include_router(community.router, prefix="/api/v1/community", tags=["community"])
 

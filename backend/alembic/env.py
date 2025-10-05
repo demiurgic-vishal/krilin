@@ -11,12 +11,18 @@ from alembic import context
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# Set environment variable to prevent async engine creation
+os.environ["ALEMBIC_CONFIG"] = "1"
+
 # Import your models and database
 from app.database import Base
-from app.models.user import User
+from app.models.user import User, UserSession
 from app.models.conversation import Conversation, Message, AgentMemory
 from app.models.goal import Goal, ProgressEntry, Reminder
-from app.models.workflow import Workflow, WorkflowExecution
+from app.models.data_source import DataSource, SyncHistory, DataRecord
+from app.models.community import Accomplishment, AccomplishmentReaction, AccomplishmentComment, UserConnection, CommunityChallenge, ChallengeParticipation
+from app.models.marketplace import MarketplaceAppReview, MarketplaceAppCategory, MarketplaceAppCollection, MarketplaceApp, MarketplaceAppInstallation
+from app.models.app_platform import App, AppInstallation, AppDependency, AppPermission, AppTable, AppOutput, AppAgentConversation
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

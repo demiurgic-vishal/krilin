@@ -73,14 +73,17 @@ export default function ChatIndexPage() {
       <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
-            <Link href="/">
+            <Link href="/dashboard">
               <Button variant="ghost" size="icon">
                 <Home size={24} />
               </Button>
             </Link>
-            <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
-              Chat
-            </h1>
+            <div>
+              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                Chat
+              </h1>
+              <p className="text-sm text-[var(--muted-foreground)] mt-1">AI-powered conversations</p>
+            </div>
           </div>
         </div>
       </header>

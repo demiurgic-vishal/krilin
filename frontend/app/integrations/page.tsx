@@ -8,7 +8,7 @@ import { useDataSources } from "@/lib/hooks/useDataSources"
 import { apiClient } from "@/lib/api/client"
 import { Button } from "@/components/retroui/Button"
 import { Card } from "@/components/retroui/Card"
-import { Link2, CheckCircle, XCircle, RefreshCw, Calendar, Mail, Activity, CreditCard, BookOpen, ArrowLeft } from "lucide-react"
+import { Link2, CheckCircle, XCircle, RefreshCw, Calendar, Mail, Activity, CreditCard, BookOpen, Home } from "lucide-react"
 
 const INTEGRATION_ICONS: Record<string, any> = {
   google_calendar: Calendar,
@@ -190,18 +190,26 @@ export default function IntegrationsPage() {
     <div className="min-h-screen bg-[var(--background)]">
       <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft size={24} />
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <Link href="/dashboard">
+                <Button variant="ghost" size="icon">
+                  <Home size={24} />
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
+                  Integrations
+                </h1>
+                <p className="text-sm text-[var(--muted-foreground)] mt-1">Connect your data sources</p>
+              </div>
+            </div>
+            <Link href="/apps/new">
+              <Button variant="warning" size="sm">
+                <span className="mr-2">✨</span>
+                Generate AI Workflow
               </Button>
             </Link>
-            <div>
-              <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
-                Data Integrations
-              </h1>
-              <p className="text-sm text-[var(--muted-foreground)] mt-1">Connect your power sources!</p>
-            </div>
           </div>
         </div>
       </header>

@@ -9,12 +9,12 @@ from starlette.responses import RedirectResponse
 
 from app.config import settings
 from app.database import async_engine
-from app.models.user import User
-from app.models.goal import Goal, ProgressEntry
-from app.models.workflow import Workflow, WorkflowExecution
-from app.models.conversation import Conversation, Message
-from app.models.data_source import DataSource, SyncHistory
-from app.models.community import Accomplishment, UserConnection, CommunityChallenge
+from app.models.user import User, UserSession
+from app.models.goal import Goal, ProgressEntry, Reminder
+from app.models.conversation import Conversation, Message, AgentMemory
+from app.models.data_source import DataSource, SyncHistory, DataRecord
+from app.models.community import Accomplishment, AccomplishmentComment, AccomplishmentReaction, UserConnection, CommunityChallenge, ChallengeParticipation
+from app.models.marketplace import MarketplaceApp, MarketplaceAppInstallation, MarketplaceAppReview, MarketplaceAppCategory, MarketplaceAppCollection
 from app.utils.security import verify_password, get_user_by_email
 from app.database import AsyncSessionLocal
 
@@ -92,23 +92,6 @@ class GoalAdmin(ModelView, model=Goal):
     can_view_details = True
 
 
-class WorkflowAdmin(ModelView, model=Workflow):
-    """Workflow admin view."""
-
-    name = "Workflow"
-    name_plural = "Workflows"
-    icon = "fa-solid fa-diagram-project"
-
-    column_searchable_list = [Workflow.name, Workflow.description]
-    column_sortable_list = [Workflow.id, Workflow.created_at]
-    column_default_sort = [(Workflow.created_at, True)]
-
-    can_create = False
-    can_edit = True
-    can_delete = True
-    can_view_details = True
-
-
 class ConversationAdmin(ModelView, model=Conversation):
     """Conversation admin view."""
 
@@ -179,6 +162,276 @@ class ChallengeAdmin(ModelView, model=CommunityChallenge):
     can_view_details = True
 
 
+class MessageAdmin(ModelView, model=Message):
+    """Message admin view."""
+
+    name = "Message"
+    name_plural = "Messages"
+    icon = "fa-solid fa-message"
+
+    column_sortable_list = [Message.id, Message.created_at]
+    column_default_sort = [(Message.created_at, True)]
+    column_filters = [Message.role]
+
+    can_create = False
+    can_edit = False
+    can_delete = True
+    can_view_details = True
+
+
+class ProgressEntryAdmin(ModelView, model=ProgressEntry):
+    """Progress Entry admin view."""
+
+    name = "Progress Entry"
+    name_plural = "Progress Entries"
+    icon = "fa-solid fa-chart-line"
+
+    column_sortable_list = [ProgressEntry.id, ProgressEntry.date]
+    column_default_sort = [(ProgressEntry.date, True)]
+
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class ReminderAdmin(ModelView, model=Reminder):
+    """Reminder admin view."""
+
+    name = "Reminder"
+    name_plural = "Reminders"
+    icon = "fa-solid fa-bell"
+
+    column_sortable_list = [Reminder.id, Reminder.scheduled_for]
+    column_default_sort = [(Reminder.scheduled_for, False)]
+    column_filters = [Reminder.is_sent, Reminder.is_acknowledged]
+
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class SyncHistoryAdmin(ModelView, model=SyncHistory):
+    """Sync History admin view."""
+
+    name = "Sync History"
+    name_plural = "Sync Histories"
+    icon = "fa-solid fa-rotate"
+
+    column_sortable_list = [SyncHistory.id, SyncHistory.started_at]
+    column_default_sort = [(SyncHistory.started_at, True)]
+    column_filters = [SyncHistory.status]
+
+    can_create = False
+    can_edit = False
+    can_delete = True
+    can_view_details = True
+
+
+class DataRecordAdmin(ModelView, model=DataRecord):
+    """Data Record admin view."""
+
+    name = "Data Record"
+    name_plural = "Data Records"
+    icon = "fa-solid fa-table"
+
+    column_sortable_list = [DataRecord.id, DataRecord.record_date]
+    column_default_sort = [(DataRecord.record_date, True)]
+    column_filters = [DataRecord.record_type]
+
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+
+
+class AgentMemoryAdmin(ModelView, model=AgentMemory):
+    """Agent Memory admin view."""
+
+    name = "Agent Memory"
+    name_plural = "Agent Memories"
+    icon = "fa-solid fa-brain"
+
+    column_sortable_list = [AgentMemory.id, AgentMemory.created_at]
+    column_default_sort = [(AgentMemory.created_at, True)]
+
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class UserConnectionAdmin(ModelView, model=UserConnection):
+    """User Connection admin view."""
+
+    name = "User Connection"
+    name_plural = "User Connections"
+    icon = "fa-solid fa-users"
+
+    column_sortable_list = [UserConnection.id, UserConnection.created_at]
+    column_default_sort = [(UserConnection.created_at, True)]
+    column_filters = [UserConnection.is_mutual, UserConnection.is_blocked]
+
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class AccomplishmentCommentAdmin(ModelView, model=AccomplishmentComment):
+    """Accomplishment Comment admin view."""
+
+    name = "Accomplishment Comment"
+    name_plural = "Accomplishment Comments"
+    icon = "fa-solid fa-comment"
+
+    column_sortable_list = [AccomplishmentComment.id, AccomplishmentComment.created_at]
+    column_default_sort = [(AccomplishmentComment.created_at, True)]
+
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class AccomplishmentReactionAdmin(ModelView, model=AccomplishmentReaction):
+    """Accomplishment Reaction admin view."""
+
+    name = "Accomplishment Reaction"
+    name_plural = "Accomplishment Reactions"
+    icon = "fa-solid fa-heart"
+
+    column_sortable_list = [AccomplishmentReaction.id, AccomplishmentReaction.created_at]
+    column_default_sort = [(AccomplishmentReaction.created_at, True)]
+    column_filters = [AccomplishmentReaction.reaction_type]
+
+    can_create = False
+    can_edit = False
+    can_delete = True
+    can_view_details = True
+
+
+class ChallengeParticipationAdmin(ModelView, model=ChallengeParticipation):
+    """Challenge Participation admin view."""
+
+    name = "Challenge Participation"
+    name_plural = "Challenge Participations"
+    icon = "fa-solid fa-user-check"
+
+    column_sortable_list = [ChallengeParticipation.id, ChallengeParticipation.joined_at]
+    column_default_sort = [(ChallengeParticipation.joined_at, True)]
+    column_filters = [ChallengeParticipation.is_completed]
+
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class AppAdmin(ModelView, model=MarketplaceApp):
+    """Marketplace App admin view."""
+
+    name = "Marketplace App"
+    name_plural = "Marketplace Apps"
+    icon = "fa-solid fa-store"
+
+    column_searchable_list = [MarketplaceApp.name, MarketplaceApp.description]
+    column_sortable_list = [MarketplaceApp.id, MarketplaceApp.created_at]
+    column_default_sort = [(MarketplaceApp.created_at, True)]
+    column_filters = [MarketplaceApp.publish_status, MarketplaceApp.is_official, MarketplaceApp.is_featured]
+
+    can_create = True
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class AppInstallationAdmin(ModelView, model=MarketplaceAppInstallation):
+    """Marketplace App Installation admin view."""
+
+    name = "Marketplace App Installation"
+    name_plural = "Marketplace App Installations"
+    icon = "fa-solid fa-download"
+
+    column_sortable_list = [MarketplaceAppInstallation.id, MarketplaceAppInstallation.installed_at]
+    column_default_sort = [(MarketplaceAppInstallation.installed_at, True)]
+    column_filters = [MarketplaceAppInstallation.is_active]
+
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class AppReviewAdmin(ModelView, model=MarketplaceAppReview):
+    """App Review admin view."""
+
+    name = "App Review"
+    name_plural = "App Reviews"
+    icon = "fa-solid fa-star"
+
+    column_sortable_list = [MarketplaceAppReview.id, MarketplaceAppReview.created_at]
+    column_default_sort = [(MarketplaceAppReview.created_at, True)]
+    column_filters = [MarketplaceAppReview.rating]
+
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class AppCategoryAdmin(ModelView, model=MarketplaceAppCategory):
+    """App Category admin view."""
+
+    name = "App Category"
+    name_plural = "App Categories"
+    icon = "fa-solid fa-tags"
+
+    column_searchable_list = [MarketplaceAppCategory.name, MarketplaceAppCategory.description]
+    column_sortable_list = [MarketplaceAppCategory.id]
+
+    can_create = True
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class AppCollectionAdmin(ModelView, model=MarketplaceAppCollection):
+    """App Collection admin view."""
+
+    name = "App Collection"
+    name_plural = "App Collections"
+    icon = "fa-solid fa-folder"
+
+    column_searchable_list = [MarketplaceAppCollection.name, MarketplaceAppCollection.description]
+    column_sortable_list = [MarketplaceAppCollection.id, MarketplaceAppCollection.created_at]
+    column_default_sort = [(MarketplaceAppCollection.created_at, True)]
+
+    can_create = True
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class UserSessionAdmin(ModelView, model=UserSession):
+    """User Session admin view."""
+
+    name = "User Session"
+    name_plural = "User Sessions"
+    icon = "fa-solid fa-clock"
+
+    column_sortable_list = [UserSession.id, UserSession.created_at]
+    column_default_sort = [(UserSession.created_at, True)]
+
+    can_create = False
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
 def setup_admin(app) -> Admin:
     """
     Setup and configure admin interface.
@@ -200,12 +453,38 @@ def setup_admin(app) -> Admin:
     )
 
     # Register admin views
+    # Users & Sessions
     admin.add_view(UserAdmin)
+    admin.add_view(UserSessionAdmin)
+
+    # Goals & Progress
     admin.add_view(GoalAdmin)
-    admin.add_view(WorkflowAdmin)
+    admin.add_view(ProgressEntryAdmin)
+    admin.add_view(ReminderAdmin)
+
+    # Conversations & Messages
     admin.add_view(ConversationAdmin)
+    admin.add_view(MessageAdmin)
+    admin.add_view(AgentMemoryAdmin)
+
+    # Data Sources & Records
     admin.add_view(DataSourceAdmin)
+    admin.add_view(DataRecordAdmin)
+    admin.add_view(SyncHistoryAdmin)
+
+    # Community
     admin.add_view(AccomplishmentAdmin)
+    admin.add_view(AccomplishmentCommentAdmin)
+    admin.add_view(AccomplishmentReactionAdmin)
+    admin.add_view(UserConnectionAdmin)
     admin.add_view(ChallengeAdmin)
+    admin.add_view(ChallengeParticipationAdmin)
+
+    # Apps Marketplace
+    admin.add_view(AppAdmin)
+    admin.add_view(AppInstallationAdmin)
+    admin.add_view(AppReviewAdmin)
+    admin.add_view(AppCategoryAdmin)
+    admin.add_view(AppCollectionAdmin)
 
     return admin

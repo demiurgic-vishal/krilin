@@ -1,0 +1,200 @@
+{
+  "metadata": {
+    "id": "journal",
+    "name": "Journal",
+    "description": "Daily journaling with mood tracking, reflection prompts, and AI-powered insights. Build a consistent journaling practice.",
+    "version": "1.0.0",
+    "author": "Krilin",
+    "icon": "book-open",
+    "category": "wellness",
+    "tags": ["journal", "reflection", "mood", "wellness", "writing"]
+  },
+  "code_module": "apps.journal.backend",
+  "dependencies": {
+    "apps": [],
+    "integrations": []
+  },
+  "outputs": [
+    {
+      "id": "mood_trends",
+      "type": "data",
+      "description": "Mood trends over time for analytics",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "date": {"type": "string", "format": "date"},
+            "mood": {"type": "string"},
+            "mood_score": {"type": "integer"}
+          }
+        }
+      }
+    },
+    {
+      "id": "writing_stats",
+      "type": "data",
+      "description": "Writing statistics (word count, frequency, etc.)",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "total_entries": {"type": "integer"},
+          "current_streak": {"type": "integer"},
+          "avg_word_count": {"type": "number"}
+        }
+      }
+    }
+  },
+  "agent_config": {
+    "enabled": true,
+    "system_prompt": "You are a Journaling Companion AI, specialized in helping users with reflection and self-discovery.\n\nYour role:\n- Provide thoughtful reflection prompts\n- Help users process their thoughts and emotions\n- Identify patterns in mood and experiences\n- Encourage consistent journaling practice\n- Ask follow-up questions to deepen self-awareness\n- Maintain a supportive, non-judgmental presence\n\nYou have access to tools to:\n- View journal entries and moods\n- Create new entries\n- Analyze mood patterns\n- Get journaling statistics\n\nAlways respect privacy and be empathetic. Guide users toward self-discovery rather than giving direct advice.",
+    "allowed_tools": ["WebSearch"],
+    "max_turns": 50,
+    "temperature": 0.8
+  },
+  "permissions": {
+    "data_read": ["entries"],
+    "data_write": ["entries"],
+    "integrations": [],
+    "notifications": true,
+    "files": false,
+    "schedule": true,
+    "ai": true
+  },
+  "database": {
+    "tables": [
+      {
+        "name": "entries",
+        "description": "Journal entries with mood and content",
+        "schema": {
+          "title": "string",
+          "content": "text",
+          "mood": "string",
+          "mood_score": "integer",
+          "tags": "array",
+          "is_private": "boolean",
+          "word_count": "integer"
+        },
+        "indexes": [
+          {"fields": ["mood"], "name": "idx_mood"},
+          {"fields": ["created_at"], "name": "idx_date"}
+        ]
+      }
+    ]
+  },
+  "ui": {
+    "widgets": [
+      {
+        "id": "mood_widget",
+        "name": "Mood Tracker",
+        "description": "Quick mood logging and trends",
+        "sizes": ["small", "medium"],
+        "default_size": "small"
+      },
+      {
+        "id": "quick_entry_widget",
+        "name": "Quick Entry",
+        "description": "Fast journaling widget",
+        "sizes": ["medium"],
+        "default_size": "medium"
+      }
+    ],
+    "pages": [
+      {
+        "id": "main",
+        "name": "Journal",
+        "route": "/apps/journal",
+        "description": "Main journaling interface"
+      },
+      {
+        "id": "insights",
+        "name": "Insights",
+        "route": "/apps/journal/insights",
+        "description": "Mood trends and analytics"
+      }
+    ],
+    "settings": [
+      {
+        "id": "reminder_time",
+        "type": "time",
+        "label": "Daily Reminder",
+        "default": "21:00"
+      },
+      {
+        "id": "prompt_style",
+        "type": "select",
+        "label": "Reflection Prompt Style",
+        "options": ["minimal", "guided", "deep"],
+        "default": "guided"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "get_entries",
+      "name": "Get Entries",
+      "description": "Get journal entries with optional filtering",
+      "parameters": {
+        "start_date": {"type": "string", "description": "Start date (ISO)", "required": false},
+        "end_date": {"type": "string", "description": "End date (ISO)", "required": false},
+        "mood": {"type": "string", "description": "Filter by mood", "required": false},
+        "limit": {"type": "integer", "description": "Number of entries", "required": false, "default": 20}
+      }
+    },
+    {
+      "id": "create_entry",
+      "name": "Create Entry",
+      "description": "Create a new journal entry",
+      "parameters": {
+        "title": {"type": "string", "description": "Entry title", "required": false},
+        "content": {"type": "string", "description": "Entry content", "required": true},
+        "mood": {"type": "string", "description": "Current mood", "required": false},
+        "mood_score": {"type": "integer", "description": "Mood score (1-10)", "required": false},
+        "tags": {"type": "array", "description": "Tags", "required": false}
+      }
+    },
+    {
+      "id": "update_entry",
+      "name": "Update Entry",
+      "description": "Update an existing journal entry",
+      "parameters": {
+        "entry_id": {"type": "string", "description": "Entry ID", "required": true},
+        "title": {"type": "string", "description": "Entry title", "required": false},
+        "content": {"type": "string", "description": "Entry content", "required": false},
+        "mood": {"type": "string", "description": "Current mood", "required": false},
+        "mood_score": {"type": "integer", "description": "Mood score (1-10)", "required": false},
+        "tags": {"type": "array", "description": "Tags", "required": false}
+      }
+    },
+    {
+      "id": "delete_entry",
+      "name": "Delete Entry",
+      "description": "Delete a journal entry",
+      "parameters": {
+        "entry_id": {"type": "string", "description": "Entry ID", "required": true}
+      }
+    },
+    {
+      "id": "get_mood_trends",
+      "name": "Get Mood Trends",
+      "description": "Get mood trends over a period",
+      "parameters": {
+        "days": {"type": "integer", "description": "Number of days", "required": false, "default": 30}
+      }
+    },
+    {
+      "id": "get_stats",
+      "name": "Get Statistics",
+      "description": "Get journaling statistics",
+      "parameters": {
+        "period": {"type": "string", "description": "week, month, or year", "required": false, "default": "month"}
+      }
+    },
+    {
+      "id": "get_random_prompt",
+      "name": "Get Random Prompt",
+      "description": "Get a random reflection prompt",
+      "parameters": {}
+    }
+  ]
+}

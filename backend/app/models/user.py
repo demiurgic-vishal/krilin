@@ -46,7 +46,7 @@ class User(Base):
     
     # Relationships
     conversations: Mapped[list["Conversation"]] = relationship(
-        back_populates="user", 
+        back_populates="user",
         cascade="all, delete-orphan"
     )
     goals: Mapped[list["Goal"]] = relationship(
@@ -54,10 +54,6 @@ class User(Base):
         cascade="all, delete-orphan"
     )
     data_sources: Mapped[list["DataSource"]] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan" 
-    )
-    workflows: Mapped[list["Workflow"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan"
     )

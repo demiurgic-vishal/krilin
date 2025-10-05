@@ -1,6 +1,6 @@
 """
 Celery background tasks for Krilin AI.
-Handles data synchronization, reminders, workflow execution, and AI analysis.
+Handles data synchronization, reminders, and AI analysis.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -12,11 +12,12 @@ from app.database import AsyncSessionLocal
 from app.models.data_source import DataSource, DataRecord, SyncHistory
 from app.models.goal import Goal, Reminder
 from app.models.user import User
-from app.models.workflow import Workflow, WorkflowExecution
+# TODO: Update to use App models when app execution is implemented
+# from app.models.marketplace import App, AppInstallation
 from app.workers.celery_app import celery_app
 
 # Import all models to ensure relationships are properly configured
-from app.models import user, conversation, goal, data_source, workflow, community
+from app.models import user, conversation, goal, data_source, community, marketplace
 
 
 def utcnow():
@@ -368,77 +369,20 @@ async def _generate_news_aggregation_async(user_id: int) -> dict[str, Any]:
             return {"status": "error", "error": str(e)}
 
 
-# ========== Workflow Execution ==========
+# ========== App Execution ==========
+# TODO: Implement app execution for marketplace apps
+# This will handle running user-installed apps with UI, state, and custom logic
 
-@celery_app.task(bind=True)
-def execute_user_workflow(self, workflow_id: int, execution_id: int):
-    """
-    Execute a user's custom workflow.
-
-    Args:
-        workflow_id: Workflow ID
-        execution_id: Execution record ID
-    """
-    import asyncio
-    return asyncio.run(_execute_user_workflow_async(workflow_id, execution_id))
-
-
-async def _execute_user_workflow_async(workflow_id: int, execution_id: int) -> dict[str, Any]:
-    """Safely execute workflow steps."""
-    async with AsyncSessionLocal() as db:
-        # Get workflow and execution
-        wf_result = await db.execute(
-            select(Workflow).where(Workflow.id == workflow_id)
-        )
-        workflow = wf_result.scalar_one_or_none()
-
-        exec_result = await db.execute(
-            select(WorkflowExecution).where(WorkflowExecution.id == execution_id)
-        )
-        execution = exec_result.scalar_one_or_none()
-
-        if not workflow or not execution:
-            return {"error": "Workflow or execution not found"}
-
-        try:
-            execution.status = "running"
-            execution.started_at = utcnow()
-            await db.commit()
-
-            # Import workflow executor
-            from app.services.workflow_executor import WorkflowExecutor
-
-            executor = WorkflowExecutor(workflow, execution, db)
-            results = await executor.execute()
-
-            # Update execution
-            execution.status = "completed"
-            execution.completed_at = utcnow()
-            execution.duration_seconds = (
-                execution.completed_at - execution.started_at
-            ).total_seconds()
-            execution.results = results
-
-            # Update workflow stats
-            workflow.success_count += 1
-
-            await db.commit()
-
-            return {"status": "success", "results": results}
-
-        except Exception as e:
-            execution.status = "failed"
-            execution.completed_at = utcnow()
-            execution.duration_seconds = (
-                execution.completed_at - execution.started_at
-            ).total_seconds()
-            execution.error_message = str(e)
-
-            workflow.failure_count += 1
-
-            await db.commit()
-
-            return {"status": "error", "error": str(e)}
+# @celery_app.task(bind=True)
+# def execute_user_app(self, app_id: int, execution_id: int):
+#     """
+#     Execute a user's installed app.
+#
+#     Args:
+#         app_id: App installation ID
+#         execution_id: Execution record ID
+#     """
+#     pass
 
 
 # ========== Book Search ==========
@@ -470,6 +414,38 @@ async def _find_libgen_books_async(search_query: str, user_id: int, goal_id: int
 
     except Exception as e:
         return {"status": "error", "error": str(e)}
+
+
+# ========== Data Source Sync (for New Platform) ==========
+
+@celery_app.task(bind=True)
+def sync_data_source_task(self, data_source_id: int, incremental: bool = True):
+    """
+    Sync a data source (used by sync engine).
+
+    Args:
+        data_source_id: Data source ID
+        incremental: If True, only sync since last sync
+    """
+    import asyncio
+    return asyncio.run(_sync_data_source_task_async(data_source_id, incremental))
+
+
+async def _sync_data_source_task_async(data_source_id: int, incremental: bool) -> dict[str, Any]:
+    """Async implementation of data source sync."""
+    from app.services.sync_engine import get_sync_engine
+
+    async with AsyncSessionLocal() as db:
+        sync_engine = await get_sync_engine(db)
+        result = await sync_engine.sync_data_source(data_source_id, incremental)
+
+        return {
+            "success": result.success,
+            "records_fetched": result.records_fetched,
+            "records_created": result.records_created,
+            "records_updated": result.records_updated,
+            "error": result.error
+        }
 
 
 # ========== Celery Beat Schedule ==========

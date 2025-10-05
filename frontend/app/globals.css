@@ -17,36 +17,36 @@
     --card-foreground: #000;
 
     /* Primary - Bold Yellow */
-    --primary: #ffdb33;
+    --primary: #ffd700;
     --primary-hover: #ffcc00;
     --primary-foreground: #000;
 
-    /* Secondary - Deep Black */
-    --secondary: #000;
+    /* Secondary - Dark Gray */
+    --secondary: #2d2d2d;
     --secondary-foreground: #fff;
 
     /* Muted - Soft Gray */
-    --muted: #d5d5d5;
-    --muted-foreground: #5a5a5a;
+    --muted: #e0e0e0;
+    --muted-foreground: #666;
 
-    /* Accent - Bright Lime */
-    --accent: #fae583;
+    /* Accent - Peach */
+    --accent: #ffb380;
     --accent-foreground: #000;
 
-    /* Success - Neon Cyan */
-    --success: #01ffcc;
+    /* Success - Bright Cyan */
+    --success: #00e5cc;
     --success-foreground: #000;
 
     /* Destructive - Vibrant Red */
-    --destructive: #e63946;
+    --destructive: #ff4757;
     --destructive-foreground: #fff;
 
-    /* Info - Lavender */
-    --info: #c4a1ff;
+    /* Info - Soft Purple */
+    --info: #a29bfe;
     --info-foreground: #000;
 
-    /* Warning - Chartreuse */
-    --warning: #e7f192;
+    /* Warning - Lime Yellow */
+    --warning: #f1f333;
     --warning-foreground: #000;
 
     --border: #000;
@@ -67,22 +67,22 @@
     --foreground: #f5f5f5;
     --card: #242424;
     --card-foreground: #f5f5f5;
-    --primary: #ffdb33;
+    --primary: #ffd700;
     --primary-hover: #ffcc00;
     --primary-foreground: #000;
     --secondary: #3a3a3a;
     --secondary-foreground: #f5f5f5;
     --muted: #3f3f46;
     --muted-foreground: #a0a0a0;
-    --accent: #fae583;
+    --accent: #ffb380;
     --accent-foreground: #000;
-    --success: #01ffcc;
+    --success: #00e5cc;
     --success-foreground: #000;
-    --destructive: #e63946;
+    --destructive: #ff4757;
     --destructive-foreground: #fff;
-    --info: #c4a1ff;
+    --info: #a29bfe;
     --info-foreground: #000;
-    --warning: #e7f192;
+    --warning: #f1f333;
     --warning-foreground: #000;
     --border: #5c5c5c;
     --background-pattern: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");

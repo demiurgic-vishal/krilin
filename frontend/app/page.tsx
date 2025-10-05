@@ -57,7 +57,7 @@ export default function HomePage() {
         </div>
 
         {/* Quick Actions Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
           <Link href="/chat" className="group">
             <div className="border-2 border-[var(--border)] bg-[var(--primary)] p-8 shadow-[4px_4px_0_0_var(--border)] transition-all hover:shadow-[8px_8px_0_0_var(--border)] hover:translate-x-[-4px] hover:translate-y-[-4px]">
               <MessageSquare size={48} className="mb-4" />
@@ -74,11 +74,19 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link href="/workflows" className="group">
+          <Link href="/data-sources" className="group">
             <div className="border-2 border-[var(--border)] bg-[var(--accent)] p-8 shadow-[4px_4px_0_0_var(--border)] transition-all hover:shadow-[8px_8px_0_0_var(--border)] hover:translate-x-[-4px] hover:translate-y-[-4px]">
               <Zap size={48} className="mb-4" />
-              <h3 className="text-2xl font-bold mb-2 uppercase">Workflows</h3>
-              <p className="text-sm">Automate your tasks</p>
+              <h3 className="text-2xl font-bold mb-2 uppercase">Data Sources</h3>
+              <p className="text-sm">Connect your integrations</p>
+            </div>
+          </Link>
+
+          <Link href="/apps" className="group">
+            <div className="border-2 border-[var(--border)] bg-[var(--warning)] p-8 shadow-[4px_4px_0_0_var(--border)] transition-all hover:shadow-[8px_8px_0_0_var(--border)] hover:translate-x-[-4px] hover:translate-y-[-4px]">
+              <Sparkles size={48} className="mb-4" />
+              <h3 className="text-2xl font-bold mb-2 uppercase">Apps</h3>
+              <p className="text-sm">AI-generated applications</p>
             </div>
           </Link>
         </div>

@@ -35,19 +35,16 @@ export default function WellnessPage() {
       <header className="border-b-4 border-[var(--border)] bg-[var(--card)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
-            <Link href="/">
+            <Link href="/dashboard">
               <Button variant="ghost" size="icon">
-                <ArrowLeft size={24} />
+                <Home size={24} />
               </Button>
             </Link>
-            <div className="flex-1">
+            <div>
               <h1 className="text-3xl font-[var(--font-head)] uppercase tracking-wider">
-                Mental Wellness Center
+                Wellness
               </h1>
-              <p className="text-sm text-[var(--muted-foreground)] mt-1">Research-backed tools to improve your mental wellbeing and build resilience.</p>
-              <p className="text-center text-[var(--primary)] font-[var(--font-head)] text-sm mt-2">
-                "Even warriors need to train their minds, not just their bodies." - Krillin
-              </p>
+              <p className="text-sm text-[var(--muted-foreground)] mt-1">Research-backed tools for mental wellbeing</p>
             </div>
           </div>
         </div>

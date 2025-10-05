@@ -72,8 +72,12 @@ class Settings(BaseSettings):
     
     # CORS
     allowed_origins: list[str] = [
-        "http://localhost:3000",  # Next.js frontend
+        "http://localhost:3000",  # Next.js frontend (default)
         "http://localhost:3001",  # Alternative frontend port
+        "http://localhost:8001",  # Backend on 8001 (for local dev)
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:8001",
     ]
     
     # Logging

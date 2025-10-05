@@ -9,7 +9,7 @@ import secrets
 
 from fastapi import APIRouter, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import CurrentUserDep, DatabaseDep
@@ -401,6 +401,8 @@ async def list_data_sources(
     Returns:
         list[DataSourceResponse]: List of user's data sources
     """
+    from app.models.data_source import DataRecord
+
     query = select(DataSource).where(
         DataSource.user_id == current_user.id
     ).order_by(DataSource.created_at.desc())
@@ -414,8 +416,18 @@ async def list_data_sources(
     result = await db.execute(query)
     sources = result.scalars().all()
 
+    # Get record counts for all sources
+    record_counts = {}
+    for source in sources:
+        count_result = await db.execute(
+            select(func.count()).select_from(DataRecord).where(
+                DataRecord.data_source_id == source.id
+            )
+        )
+        record_counts[source.id] = count_result.scalar_one()
+
     # Convert model to response (hiding credentials)
-    return [_to_response(source) for source in sources]
+    return [_to_response(source, record_counts.get(source.id, 0)) for source in sources]
 
 
 @router.get("/sources/{source_id}/records")
@@ -459,6 +471,14 @@ async def get_data_source_records(
             detail="Data source not found"
         )
 
+    # Get total count
+    count_result = await db.execute(
+        select(func.count()).select_from(DataRecord).where(
+            DataRecord.data_source_id == source_id
+        )
+    )
+    total = count_result.scalar_one()
+
     # Get data records
     records_result = await db.execute(
         select(DataRecord).where(
@@ -467,18 +487,23 @@ async def get_data_source_records(
     )
     records = records_result.scalars().all()
 
-    return [
-        {
-            "id": r.id,
-            "external_id": r.external_id,
-            "record_type": r.record_type,
-            "data": r.data,
-            "record_date": r.record_date.isoformat(),
-            "created_at": r.created_at.isoformat(),
-            "updated_at": r.updated_at.isoformat()
-        }
-        for r in records
-    ]
+    return {
+        "records": [
+            {
+                "id": r.id,
+                "external_id": r.external_id,
+                "record_type": r.record_type,
+                "data": r.data,
+                "record_date": r.record_date.isoformat(),
+                "created_at": r.created_at.isoformat(),
+                "updated_at": r.updated_at.isoformat()
+            }
+            for r in records
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
 
 
 @router.get("/sources/{source_id}", response_model=DataSourceResponse)
@@ -501,6 +526,8 @@ async def get_data_source(
     Raises:
         HTTPException: If data source not found or unauthorized
     """
+    from app.models.data_source import DataRecord
+
     result = await db.execute(
         select(DataSource).where(
             DataSource.id == source_id,
@@ -515,7 +542,15 @@ async def get_data_source(
             detail="Data source not found"
         )
 
-    return _to_response(source)
+    # Get record count
+    count_result = await db.execute(
+        select(func.count()).select_from(DataRecord).where(
+            DataRecord.data_source_id == source_id
+        )
+    )
+    record_count = count_result.scalar_one()
+
+    return _to_response(source, record_count)
 
 
 @router.post("/sources", response_model=DataSourceResponse, status_code=status.HTTP_201_CREATED)
@@ -718,7 +753,13 @@ async def trigger_sync(
 
     # Check if recent sync exists (within last 5 minutes) unless force=True
     if not sync_trigger.force and source.last_sync_at:
-        time_since_sync = (datetime.utcnow() - source.last_sync_at).total_seconds()
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
+        # Make last_sync_at timezone-aware if it isn't
+        last_sync = source.last_sync_at
+        if last_sync.tzinfo is None:
+            last_sync = last_sync.replace(tzinfo=timezone.utc)
+        time_since_sync = (now - last_sync).total_seconds()
         if time_since_sync < 300:  # 5 minutes
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -858,12 +899,13 @@ async def get_data_source_stats(
     )
 
 
-def _to_response(source: DataSource) -> DataSourceResponse:
+def _to_response(source: DataSource, record_count: Optional[int] = None) -> DataSourceResponse:
     """
     Convert DataSource model to response schema (hiding credentials).
 
     Args:
         source: DataSource model
+        record_count: Optional pre-calculated record count
 
     Returns:
         DataSourceResponse: Safe response schema
@@ -877,6 +919,16 @@ def _to_response(source: DataSource) -> DataSourceResponse:
         total_syncs = len(source.sync_history) if sync_history_loaded else 0
     except:
         total_syncs = 0
+
+    # Use provided record_count or try to safely access records without triggering lazy load
+    if record_count is None:
+        try:
+            from sqlalchemy import inspect
+            insp = inspect(source)
+            records_loaded = 'records' in insp.dict
+            record_count = len(source.records) if records_loaded else 0
+        except:
+            record_count = 0
 
     return DataSourceResponse(
         id=source.id,
@@ -894,6 +946,7 @@ def _to_response(source: DataSource) -> DataSourceResponse:
         total_syncs=total_syncs,
         successful_syncs=0,  # Would need to calculate from sync_history
         failed_syncs=source.error_count,
+        record_count=record_count,
         created_at=source.created_at,
         updated_at=source.updated_at
     )
