@@ -218,12 +218,17 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-6">
                   {conversations.map((convo) => (
                     <Link href={`/chat/${convo.id}`} key={convo.id}>
-                      <div className="p-4 border-2 border-[var(--border)] hover:shadow-[4px_4px_0_0_var(--border)] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] cursor-pointer">
-                        <div className="font-bold mb-2">{convo.title}</div>
-                        <div className="text-sm text-[var(--muted-foreground)] line-clamp-2 prose prose-sm max-w-none">
+                      <div className="p-5 border-2 border-[var(--border)] bg-[var(--card)] hover:shadow-[6px_6px_0_0_var(--border)] transition-all hover:translate-x-[-3px] hover:translate-y-[-3px] cursor-pointer group">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="font-bold text-base">
+                            {convo.title}
+                          </div>
+                          <MessageSquare size={18} className="opacity-40 group-hover:opacity-100 group-hover:text-[var(--primary)] transition-all flex-shrink-0 ml-2" />
+                        </div>
+                        <div className="text-sm text-[var(--muted-foreground)] line-clamp-2 prose prose-sm max-w-none mb-3 leading-relaxed">
                           {convo.messages.length > 0 ? (
                             <ReactMarkdown
                               components={{
@@ -244,19 +249,24 @@ export default function DashboardPage() {
                               {convo.messages[convo.messages.length - 1].content.substring(0, 150)}
                             </ReactMarkdown>
                           ) : (
-                            'No messages yet'
+                            <span className="italic">No messages yet</span>
                           )}
                         </div>
-                        <div className="text-xs text-[var(--muted-foreground)] mt-2">
-                          {convo.last_message_at
-                            ? new Date(convo.last_message_at).toLocaleDateString()
-                            : 'No messages'}
-                        </div>
+                        {convo.last_message_at && (
+                          <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+                            <span className="uppercase font-medium">
+                              {new Date(convo.last_message_at).toLocaleDateString()}
+                            </span>
+                            <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              →
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </Link>
                   ))}
                   <Link href="/chat">
-                    <Button variant="outline" className="w-full">View All Chats</Button>
+                    <Button variant="outline" className="w-full mt-4">View All Chats</Button>
                   </Link>
                 </div>
               )}

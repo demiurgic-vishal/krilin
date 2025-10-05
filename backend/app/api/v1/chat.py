@@ -227,6 +227,8 @@ async def send_message(
         message_metadata=chat_request.metadata or {}
     )
     db.add(user_message)
+    await db.commit()
+    await db.refresh(user_message)  # Get the created_at timestamp
 
     try:
         # Get AI agent and generate response
@@ -341,6 +343,10 @@ async def send_message_stream(
     )
     db.add(user_message)
     await db.commit()
+    await db.refresh(user_message)  # Refresh to get created_at
+
+    # Store the timestamp before entering the generator
+    user_message_timestamp = user_message.created_at
 
     async def event_generator() -> AsyncGenerator[str, None]:
         """Generate SSE events for streaming response."""
@@ -447,8 +453,9 @@ async def send_message_stream(
             )
             db.add(ai_message)
 
-            # Update conversation
-            conversation.last_message_at = user_message.created_at
+            # Update conversation last_message_at using the captured timestamp
+            conversation.last_message_at = user_message_timestamp
+            logger.info(f"[STREAM] Setting last_message_at to {user_message_timestamp}")
             logger.info(f"[STREAM] Committing changes to database")
             await db.commit()
             logger.info(f"[STREAM] Commit successful")
