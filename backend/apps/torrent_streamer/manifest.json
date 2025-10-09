@@ -1,0 +1,136 @@
+{
+  "metadata": {
+    "id": "torrent-streamer",
+    "name": "Torrent Streamer",
+    "description": "Upload torrent files and stream videos directly in your browser using WebTorrent. Watch while downloading.",
+    "version": "1.0.0",
+    "author": "Krilin",
+    "icon": "film",
+    "category": "entertainment",
+    "tags": ["torrents", "streaming", "video", "entertainment", "p2p"]
+  },
+  "code_module": "apps.torrent_streamer.backend",
+  "dependencies": {
+    "apps": [],
+    "integrations": []
+  },
+  "outputs": [],
+  "agent_config": {
+    "enabled": false
+  },
+  "permissions": {
+    "data_read": ["uploaded_torrents"],
+    "data_write": ["uploaded_torrents"],
+    "integrations": [],
+    "notifications": true,
+    "files": true,
+    "schedule": false,
+    "ai": false
+  },
+  "database": {
+    "tables": [
+      {
+        "name": "uploaded_torrents",
+        "description": "User's uploaded torrent files",
+        "schema": {
+          "name": "string",
+          "info_hash": "string",
+          "file_count": "integer",
+          "total_size": "string",
+          "uploaded_at": "datetime"
+        },
+        "indexes": [
+          {"fields": ["uploaded_at"], "name": "idx_uploaded_at"},
+          {"fields": ["info_hash"], "name": "idx_info_hash"}
+        ]
+      }
+    ]
+  },
+  "ui": {
+    "widgets": [],
+    "pages": [
+      {
+        "id": "main",
+        "name": "Torrent Streamer",
+        "route": "/apps/torrent-streamer",
+        "description": "Upload and stream torrent files"
+      }
+    ],
+    "settings": [
+      {
+        "id": "auto_play",
+        "type": "boolean",
+        "label": "Auto-play when video is ready",
+        "default": true
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "save_torrent_info",
+      "name": "Save Torrent Info",
+      "description": "Save uploaded torrent metadata",
+      "parameters": {
+        "name": {"type": "string", "required": true},
+        "info_hash": {"type": "string", "required": true},
+        "file_count": {"type": "integer", "required": true},
+        "total_size": {"type": "string", "required": true}
+      }
+    },
+    {
+      "id": "get_uploaded_torrents",
+      "name": "Get Uploaded Torrents",
+      "description": "Get user's uploaded torrent history",
+      "parameters": {
+        "limit": {
+          "type": "integer",
+          "description": "Number of recent uploads",
+          "required": false,
+          "default": 20
+        }
+      }
+    },
+    {
+      "id": "delete_torrent",
+      "name": "Delete Torrent",
+      "description": "Delete a torrent from history",
+      "parameters": {
+        "torrent_id": {"type": "string", "required": true}
+      }
+    },
+    {
+      "id": "start_backend_download",
+      "name": "Start Backend Download",
+      "description": "Download torrent via backend (works with all seeders)",
+      "parameters": {
+        "info_hash": {"type": "string", "required": true},
+        "torrent_data": {"type": "string", "required": true}
+      }
+    },
+    {
+      "id": "get_download_status",
+      "name": "Get Download Status",
+      "description": "Get backend download progress and status",
+      "parameters": {
+        "info_hash": {"type": "string", "required": true}
+      }
+    },
+    {
+      "id": "list_torrent_files",
+      "name": "List Torrent Files",
+      "description": "List files in a backend-downloaded torrent",
+      "parameters": {
+        "info_hash": {"type": "string", "required": true}
+      }
+    },
+    {
+      "id": "get_stream_url",
+      "name": "Get Stream URL",
+      "description": "Get streaming URL for a file",
+      "parameters": {
+        "info_hash": {"type": "string", "required": true},
+        "file_index": {"type": "integer", "required": true}
+      }
+    }
+  ]
+}

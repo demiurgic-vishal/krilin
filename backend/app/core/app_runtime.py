@@ -181,6 +181,8 @@ class AppRuntime:
                 f"[RUNTIME] Executing {app_id}.{action_name} "
                 f"for user {ctx.user_id}"
             )
+            logger.info(f"[RUNTIME] Params received: {params}")
+            logger.info(f"[RUNTIME] Params keys: {list(params.keys())}")
 
             # Execute with timeout
             try:

@@ -10,7 +10,7 @@ import { useStreamingMessage, useConversations } from "@/lib/hooks/useChat"
 import { Button } from "@/components/retroui/Button"
 import { Input } from "@/components/retroui/Input"
 import { AnimatedTitle } from "@/components/AnimatedTitle"
-import { Home, Plus, MessageSquare, Send, Trash2, Loader2, Paperclip, X } from "lucide-react"
+import { Home, Plus, MessageSquare, Send, Trash2, Loader2, Paperclip, X, Copy, FileText } from "lucide-react"
 
 // Retro terminal-style code theme (dark background for all modes)
 const retroCodeTheme = {
@@ -114,10 +114,17 @@ const CodeBlock = ({ language, children }: { language: string; children: string 
 const MessageBubble = memo(({ message, index }: { message: { role: 'user' | 'assistant', content: string, timestamp: string, thinking?: string, toolCalls?: Array<{ tool: string; input: any }> }, index: number }) => {
   const [showThinking, setShowThinking] = useState(false)
   const [showToolCalls, setShowToolCalls] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const copyRawMarkdown = () => {
+    navigator.clipboard.writeText(message.content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div
-      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} group`}
     >
       <div
         className={`max-w-[75%] p-4 border-2 border-[var(--border)] ${
@@ -126,8 +133,21 @@ const MessageBubble = memo(({ message, index }: { message: { role: 'user' | 'ass
             : 'bg-[var(--card)] text-[var(--card-foreground)]'
         } shadow-[2px_2px_0_0_var(--border)]`}
       >
-        <div className="text-xs opacity-70 mb-2 uppercase">
-          {message.role === 'user' ? 'You' : 'Assistant'}
+        <div className="flex justify-between items-start mb-2">
+          <div className="text-xs opacity-70 uppercase">
+            {message.role === 'user' ? 'You' : 'Assistant'}
+          </div>
+          {message.role === 'assistant' && (
+            <Button
+              onClick={copyRawMarkdown}
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              title={copied ? "Copied!" : "Copy raw markdown"}
+            >
+              {copied ? <Copy size={14} className="text-[var(--success)]" /> : <FileText size={14} />}
+            </Button>
+          )}
         </div>
 
         {/* Tool Calls */}

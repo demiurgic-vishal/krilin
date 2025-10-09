@@ -27,6 +27,27 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  webpack: (config, { isServer, webpack }) => {
+    if (!isServer) {
+      // Fix for WebTorrent and other browser-only modules
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+
+      // Add global polyfill for WebTorrent
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          global: 'global',
+          process: 'process/browser',
+          Buffer: ['buffer', 'Buffer'],
+        })
+      );
+    }
+    return config;
+  },
 }
 
 if (userConfig) {
