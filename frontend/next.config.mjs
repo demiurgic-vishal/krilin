@@ -22,31 +22,13 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  productionBrowserSourceMaps: false,
+  reactStrictMode: false, // Disabling can speed up dev
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
-  },
-  webpack: (config, { isServer, webpack }) => {
-    if (!isServer) {
-      // Fix for WebTorrent and other browser-only modules
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-      };
-
-      // Add global polyfill for WebTorrent
-      config.plugins.push(
-        new webpack.ProvidePlugin({
-          global: 'global',
-          process: 'process/browser',
-          Buffer: ['buffer', 'Buffer'],
-        })
-      );
-    }
-    return config;
+    optimizePackageImports: ['lucide-react'],
   },
 }
 

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>app 1 Preview</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+        // Krilin SDK
+        window.krilin = {
+            actions: {
+                call: async (name, params) => {
+                    const response = await fetch(`/api/v1/apps/app-1/actions/${name}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        credentials: 'include',
+                        body: JSON.stringify(params)
+                    });
+                    return response.json();
+                }
+            },
+            storage: {
+                query: async (table, filters) => {
+                    const response = await fetch(`/api/v1/apps/app-1/storage/${table}/query`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        credentials: 'include',
+                        body: JSON.stringify(filters || {})
+                    });
+                    return response.json();
+                },
+                insert: async (table, data) => {
+                    const response = await fetch(`/api/v1/apps/app-1/storage/${table}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        credentials: 'include',
+                        body: JSON.stringify(data)
+                    });
+                    return response.json();
+                }
+            }
+        };
+    </script>
+
+    <!-- Load and compile TSX component inline -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+        // Get auth token (injected by backend)
+        const authToken = typeof __KRILIN_AUTH_TOKEN__ !== 'undefined' ? __KRILIN_AUTH_TOKEN__ : '';
+
+        // Fetch and render component
+        fetch(`/api/v1/apps/app-1/files/frontend.tsx?token=${authToken}`)
+            .then(res => res.text())
+            .then(code => {
+                // Remove import and export statements
+                code = code.replace(/import\s+.*?from\s+['"].*?['"]\s*;?\n?/g, '');
+                code = code.replace(/export\s+default\s+/g, '');
+
+                // Execute the code to define the component in this scope
+                eval(Babel.transform(code, { presets: ['react'] }).code);
+
+                // Get the component (look for common function names)
+                const App = typeof app1App !== 'undefined' ? app1App :
+                           typeof App !== 'undefined' ? App :
+                           typeof AppComponent !== 'undefined' ? AppComponent : null;
+
+                if (App) {
+                    const root = ReactDOM.createRoot(document.getElementById('root'));
+                    root.render(<App />);
+                } else {
+                    console.error('Component not found after eval');
+                    document.getElementById('root').innerHTML = '<div style="padding: 20px; color: red;">Error: Component not found</div>';
+                }
+            })
+            .catch(err => {
+                console.error('Failed to load component:', err);
+                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: red;">Error: ' + err.message + '</div>';
+            });
+    </script>
+</body>
+</html>

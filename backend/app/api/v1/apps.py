@@ -11,7 +11,7 @@ import time
 import hmac
 import hashlib
 
-from fastapi import APIRouter, HTTPException, status, Request
+from fastapi import APIRouter, HTTPException, status, Request, Header
 from fastapi.responses import StreamingResponse, Response, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -19,6 +19,7 @@ from sqlalchemy import select
 from app.dependencies import CurrentUserDep, DatabaseDep
 from app.config import settings
 from app.models.app_platform import App, AppInstallation
+from app.models.user import User
 from app.core.app_installer import (
     install_app,
     uninstall_app,
@@ -63,6 +64,21 @@ class AgentChatRequest(BaseModel):
     context: Optional[Dict[str, Any]] = None
 
 
+class AppGenerateRequest(BaseModel):
+    """Request to generate a new app."""
+    app_id: str
+    prompt: str
+    app_name: Optional[str] = None
+    category: str = "productivity"
+
+
+class AppRefineRequest(BaseModel):
+    """Request to refine an existing app."""
+    message: str
+    conversation_history: Optional[List[Dict[str, str]]] = None
+    conversation_id: Optional[int] = None  # If provided, continue existing conversation
+
+
 class AppInstallResponse(BaseModel):
     """Response from app installation."""
     success: bool
@@ -85,6 +101,341 @@ class AppActionResponse(BaseModel):
 
 
 # Endpoints
+
+@router.post("/generate")
+async def generate_app_endpoint(
+    request_data: AppGenerateRequest,
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+) -> Dict[str, Any]:
+    """
+    Generate a new app using AI from a natural language prompt.
+
+    Creates a draft app with frontend, backend, and manifest files.
+    The app is stored in the user's directory and saved to database with status='draft'.
+
+    Args:
+        request_data: App generation parameters
+        current_user: Current user
+        db: Database session
+
+    Returns:
+        Generated app details
+
+    Raises:
+        HTTPException: If generation fails
+    """
+    try:
+        from app.services.app_generator import get_app_generator
+        from datetime import datetime
+
+        logger.info(f"[API] Generating app '{request_data.app_id}' for user {current_user.id}")
+
+        # Check if app_id already exists for this user
+        result = await db.execute(
+            select(App).where(
+                App.id == request_data.app_id,
+                App.owner_id == current_user.id
+            )
+        )
+        existing_app = result.scalar_one_or_none()
+        if existing_app:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"App '{request_data.app_id}' already exists"
+            )
+
+        # Generate app using Claude
+        generator = get_app_generator()
+        result = await generator.generate_app(
+            user_id=current_user.id,
+            app_id=request_data.app_id,
+            prompt=request_data.prompt,
+            app_name=request_data.app_name,
+            category=request_data.category
+        )
+
+        # Create App record in database
+        app = App(
+            id=request_data.app_id,
+            name=result["manifest"].get("name", request_data.app_name or request_data.app_id),
+            description=result["manifest"].get("description", request_data.prompt[:200]),
+            version=result["manifest"].get("version", "1.0.0"),
+            author=current_user.email,
+            manifest=result["manifest"],
+            status="draft",
+            app_directory=result["app_directory"],
+            is_ai_generated=True,
+            generation_prompt=request_data.prompt,
+            owner_id=current_user.id,
+            category=request_data.category,
+            is_official=False,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+
+        db.add(app)
+        await db.commit()
+        await db.refresh(app)
+
+        logger.info(f"[API] App '{request_data.app_id}' generated successfully")
+
+        return {
+            "success": True,
+            "app_id": app.id,
+            "app": {
+                "id": app.id,
+                "name": app.name,
+                "description": app.description,
+                "version": app.version,
+                "status": app.status,
+                "app_directory": app.app_directory,
+                "manifest": app.manifest
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[API] App generation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"App generation failed: {str(e)}"
+        )
+
+
+@router.post("/{app_id}/publish")
+async def publish_app_endpoint(
+    app_id: str,
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+) -> Dict[str, Any]:
+    """
+    Publish a draft app to the user's library.
+
+    Changes app status from 'draft' to 'published', making it available
+    for installation in the user's workspace.
+
+    Args:
+        app_id: App identifier
+        current_user: Current user
+        db: Database session
+
+    Returns:
+        Publication result
+
+    Raises:
+        HTTPException: If publication fails
+    """
+    try:
+        from datetime import datetime
+
+        logger.info(f"[API] Publishing app '{app_id}' for user {current_user.id}")
+
+        # Get app
+        result = await db.execute(
+            select(App).where(
+                App.id == app_id,
+                App.owner_id == current_user.id
+            )
+        )
+        app = result.scalar_one_or_none()
+
+        if not app:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"App '{app_id}' not found or you don't own it"
+            )
+
+        if app.status != "draft":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"App must be in draft status to publish (current: {app.status})"
+            )
+
+        # Update app status
+        app.status = "published"
+        app.published_at = datetime.utcnow()
+        app.publish_count += 1
+        app.updated_at = datetime.utcnow()
+
+        await db.commit()
+        await db.refresh(app)
+
+        logger.info(f"[API] App '{app_id}' published successfully")
+
+        return {
+            "success": True,
+            "app_id": app.id,
+            "message": f"App '{app.name}' published successfully",
+            "app": {
+                "id": app.id,
+                "name": app.name,
+                "status": app.status,
+                "published_at": app.published_at.isoformat() if app.published_at else None
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[API] App publication failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"App publication failed: {str(e)}"
+        )
+
+
+@router.post("/{app_id}/refine")
+async def refine_app_endpoint(
+    app_id: str,
+    request_data: AppRefineRequest,
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+) -> StreamingResponse:
+    """
+    Refine an app using AI based on user's natural language request (streaming).
+
+    Streams real-time updates as Claude modifies the app files.
+
+    Args:
+        app_id: App identifier
+        request_data: Refinement request with message and conversation history
+        current_user: Current user
+        db: Database session
+
+    Returns:
+        StreamingResponse with SSE events
+
+    Raises:
+        HTTPException: If refinement fails
+    """
+    from app.services.app_refinement import get_app_refinement
+    from datetime import datetime
+    import json
+
+    logger.info(f"[API] Refining app '{app_id}' for user {current_user.id}")
+
+    # Verify app exists and user owns it
+    result = await db.execute(
+        select(App).where(
+            App.id == app_id,
+            App.owner_id == current_user.id
+        )
+    )
+    app = result.scalar_one_or_none()
+
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"App '{app_id}' not found or you don't own it"
+        )
+
+    if app.status not in ["draft", "published"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot refine app with status '{app.status}'"
+        )
+
+    async def event_generator():
+        """Generate SSE events as Claude refines the app."""
+        try:
+            from app.models.app_platform import AppAgentConversation
+            from datetime import timezone
+
+            refinement_service = get_app_refinement()
+
+            # ===== CONVERSATION MANAGEMENT =====
+            # Get or create conversation
+            conversation = None
+            if request_data.conversation_id:
+                # Load existing conversation
+                result = await db.execute(
+                    select(AppAgentConversation).where(
+                        AppAgentConversation.id == request_data.conversation_id,
+                        AppAgentConversation.app_id == app_id,
+                        AppAgentConversation.user_id == current_user.id
+                    )
+                )
+                conversation = result.scalar_one_or_none()
+
+            if not conversation:
+                # Create new conversation
+                # Generate title from first message
+                title = request_data.message[:50] + "..." if len(request_data.message) > 50 else request_data.message
+
+                conversation = AppAgentConversation(
+                    user_id=current_user.id,
+                    app_id=app_id,
+                    title=title,
+                    conversation_history=[],
+                    context={},
+                    last_message_at=datetime.now(timezone.utc)
+                )
+                db.add(conversation)
+                await db.flush()  # Get the ID
+                await db.commit()
+                await db.refresh(conversation)
+
+            # Add user message to conversation
+            conversation.conversation_history.append({
+                "role": "user",
+                "content": request_data.message,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            conversation.last_message_at = datetime.now(timezone.utc)
+            await db.commit()
+
+            # Send conversation_id to frontend
+            yield f"data: {json.dumps({'type': 'conversation_id', 'conversation_id': conversation.id})}\n\n"
+
+            # Collect assistant response
+            assistant_response = ""
+
+            # Stream refinement process
+            async for event in refinement_service.refine_app_stream(
+                user_id=current_user.id,
+                app_id=app_id,
+                user_message=request_data.message,
+                conversation_history=request_data.conversation_history,
+                db=db
+            ):
+                # Collect assistant text
+                if event.get("type") == "token":
+                    assistant_response += event.get("content", "")
+
+                yield f"data: {json.dumps(event)}\n\n"
+
+            # Add assistant response to conversation
+            if assistant_response:
+                conversation.conversation_history.append({
+                    "role": "assistant",
+                    "content": assistant_response,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
+                conversation.last_message_at = datetime.now(timezone.utc)
+
+            # Update app timestamp
+            app.updated_at = datetime.now(timezone.utc)
+            await db.commit()
+
+            logger.info(f"[API] App '{app_id}' refined successfully, conversation {conversation.id} updated")
+
+        except Exception as e:
+            logger.error(f"[API] App refinement failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
 
 @router.post("/{app_id}/install")
 async def install_app_endpoint(
@@ -243,6 +594,128 @@ async def get_installed_apps(
         )
 
 
+@router.get("/drafts")
+async def get_draft_apps(
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+) -> AppListResponse:
+    """
+    List all draft apps for the current user.
+
+    Draft apps are apps the user is still editing/building.
+
+    Args:
+        current_user: Current user
+        db: Database session
+
+    Returns:
+        List of draft apps
+    """
+    try:
+        result = await db.execute(
+            select(App).where(
+                App.owner_id == current_user.id,
+                App.status == "draft"
+            ).order_by(App.updated_at.desc())
+        )
+        apps_records = result.scalars().all()
+
+        apps = [
+            {
+                "id": app.id,
+                "name": app.name,
+                "description": app.description,
+                "version": app.version,
+                "author": app.author,
+                "icon": app.icon,
+                "category": app.category,
+                "status": app.status,
+                "is_ai_generated": app.is_ai_generated,
+                "created_at": app.created_at.isoformat() if app.created_at else None,
+                "updated_at": app.updated_at.isoformat() if app.updated_at else None
+            }
+            for app in apps_records
+        ]
+
+        return AppListResponse(
+            apps=apps,
+            count=len(apps)
+        )
+
+    except Exception as e:
+        logger.error(f"[API] Failed to list draft apps: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list draft apps: {str(e)}"
+        )
+
+
+@router.get("/library")
+async def get_library_apps(
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+) -> AppListResponse:
+    """
+    List all published apps in the user's library.
+
+    Library apps are published and ready to be installed to workspace.
+
+    Args:
+        current_user: Current user
+        db: Database session
+
+    Returns:
+        List of library apps with installation status
+    """
+    try:
+        result = await db.execute(
+            select(App).where(
+                App.owner_id == current_user.id,
+                App.status == "published"
+            ).order_by(App.published_at.desc())
+        )
+        apps_records = result.scalars().all()
+
+        # Get installed app IDs
+        installed_result = await db.execute(
+            select(AppInstallation.app_id).where(
+                AppInstallation.user_id == current_user.id,
+                AppInstallation.status == "installed"
+            )
+        )
+        installed_app_ids = set(row[0] for row in installed_result.all())
+
+        apps = [
+            {
+                "id": app.id,
+                "name": app.name,
+                "description": app.description,
+                "version": app.version,
+                "author": app.author,
+                "icon": app.icon,
+                "category": app.category,
+                "status": app.status,
+                "is_ai_generated": app.is_ai_generated,
+                "published_at": app.published_at.isoformat() if app.published_at else None,
+                "publish_count": app.publish_count,
+                "is_installed": app.id in installed_app_ids
+            }
+            for app in apps_records
+        ]
+
+        return AppListResponse(
+            apps=apps,
+            count=len(apps)
+        )
+
+    except Exception as e:
+        logger.error(f"[API] Failed to list library apps: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list library apps: {str(e)}"
+        )
+
+
 @router.get("/available")
 async def get_available_apps(db: DatabaseDep) -> AppListResponse:
     """
@@ -313,19 +786,31 @@ async def execute_action(
         HTTPException: If action fails
     """
     try:
-        # Check if app is installed
+        # Check if app is installed OR if user owns the app (for draft previews)
         installed = await is_app_installed(current_user.id, app_id, db)
+
         if not installed:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"App {app_id} is not installed"
+            # Check if user owns this app (draft app)
+            result = await db.execute(
+                select(App).where(
+                    App.id == app_id,
+                    App.owner_id == current_user.id
+                )
             )
+            app = result.scalar_one_or_none()
+
+            if not app:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"App {app_id} is not installed or you don't have access"
+                )
 
         # Create context
         ctx = await create_app_context(
             user_id=current_user.id,
             app_id=app_id,
-            db=db
+            db=db,
+            skip_installation_check=not installed  # Skip check for draft apps
         )
 
         # Debug logging
@@ -549,6 +1034,560 @@ async def get_agent_history(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get agent history: {str(e)}"
+        )
+
+
+async def get_user_from_token_or_header(
+    db: DatabaseDep,
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+) -> User:
+    """
+    Get user from either query parameter token or Authorization header.
+    This is used for preview endpoints where token might come from iframe URL.
+    """
+    from jose import JWTError, jwt
+    from app.utils.security import get_user_by_id
+
+    # Try query parameter first
+    if token:
+        try:
+            payload = jwt.decode(
+                token,
+                settings.secret_key,
+                algorithms=[settings.algorithm]
+            )
+            user_id_str: str = payload.get("sub")
+            if user_id_str:
+                user_id = int(user_id_str)
+                user = await get_user_by_id(db, user_id)
+                if user and user.is_active:
+                    return user
+        except (JWTError, ValueError) as e:
+            logger.warning(f"Token from query param invalid: {e}")
+
+    # Try Authorization header
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            token_from_header = authorization.replace("Bearer ", "")
+            payload = jwt.decode(
+                token_from_header,
+                settings.secret_key,
+                algorithms=[settings.algorithm]
+            )
+            user_id_str: str = payload.get("sub")
+            if user_id_str:
+                user_id = int(user_id_str)
+                user = await get_user_by_id(db, user_id)
+                if user and user.is_active:
+                    return user
+        except (JWTError, ValueError) as e:
+            logger.warning(f"Token from header invalid: {e}")
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated"
+    )
+
+
+@router.get("/{app_id}/preview")
+async def serve_app_preview(
+    app_id: str,
+    db: DatabaseDep,
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Serve the preview.html file for an app.
+
+    This is used to preview user-generated apps in an iframe.
+
+    Args:
+        app_id: App identifier
+        current_user: Current user
+        db: Database session
+        token: Optional auth token to inject into preview
+
+    Returns:
+        HTML content for preview
+
+    Raises:
+        HTTPException: If app not found or not accessible
+    """
+    try:
+        from fastapi.responses import HTMLResponse
+
+        # Authenticate user from token or header
+        current_user = await get_user_from_token_or_header(db, token, authorization)
+
+        # Get app
+        result = await db.execute(
+            select(App).where(
+                App.id == app_id,
+                App.owner_id == current_user.id
+            )
+        )
+        app = result.scalar_one_or_none()
+
+        if not app:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"App '{app_id}' not found or you don't have access"
+            )
+
+        if not app.app_directory:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"App '{app_id}' does not have a preview (not a user-generated app)"
+            )
+
+        # Read files
+        from app.services.user_app_manager import get_user_app_manager
+        manager = get_user_app_manager()
+
+        try:
+            frontend_code = manager.read_frontend(current_user.id, app_id)
+            manifest = manager.read_manifest(current_user.id, app_id)
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"App files not found for '{app_id}'"
+            )
+
+        # Extract token
+        auth_token = token or ""
+
+        # Prepare frontend code for inline use
+        # Remove imports and exports
+        import re
+        frontend_code_clean = re.sub(r'import\s+.*?from\s+[\'"].*?[\'"]\s*;?\n?', '', frontend_code)
+        frontend_code_clean = re.sub(r'export\s+default\s+', '', frontend_code_clean)
+
+        # Extract function name for rendering
+        function_match = re.search(r'function\s+(\w+)\s*\(', frontend_code_clean)
+        component_name = function_match.group(1) if function_match else 'App'
+
+        # Ensure component name starts with capital letter for JSX
+        if component_name and component_name[0].islower():
+            # Create capitalized alias
+            component_name_capitalized = component_name[0].upper() + component_name[1:]
+            frontend_code_clean += f'\nconst {component_name_capitalized} = {component_name};'
+            component_name = component_name_capitalized
+
+        app_name = manifest.get('name', app_id)
+
+        # Generate complete preview HTML with embedded component
+        preview_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{app_name} Preview</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {{
+            --background: #fff;
+            --foreground: #000;
+            --card: #fff;
+            --card-foreground: #000;
+            --primary: #ffd700;
+            --primary-foreground: #000;
+            --secondary: #2d2d2d;
+            --secondary-foreground: #fff;
+            --muted: #e0e0e0;
+            --muted-foreground: #666;
+            --accent: #ffb380;
+            --success: #00e5cc;
+            --destructive: #ff4757;
+            --info: #a29bfe;
+            --warning: #f1f333;
+            --border: #000;
+        }}
+        body {{
+            margin: 0;
+            font-family: 'Space Grotesk', system-ui, sans-serif;
+        }}
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+        // Auth token
+        const __KRILIN_AUTH_TOKEN__ = '{auth_token}';
+
+        // Krilin SDK
+        window.krilin = {{
+            actions: {{
+                call: async (name, params) => {{
+                    const response = await fetch(`/api/v1/apps/{app_id}/actions/${{name}}`, {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${{__KRILIN_AUTH_TOKEN__}}`
+                        }},
+                        body: JSON.stringify(params)
+                    }});
+                    return response.json();
+                }}
+            }},
+            storage: {{
+                query: async (table, filters) => {{
+                    const response = await fetch(`/api/v1/apps/{app_id}/storage/${{table}}/query`, {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${{__KRILIN_AUTH_TOKEN__}}`
+                        }},
+                        body: JSON.stringify(filters || {{}})
+                    }});
+                    return response.json();
+                }},
+                insert: async (table, data) => {{
+                    const response = await fetch(`/api/v1/apps/{app_id}/storage/${{table}}`, {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${{__KRILIN_AUTH_TOKEN__}}`
+                        }},
+                        body: JSON.stringify(data)
+                    }});
+                    return response.json();
+                }}
+            }}
+        }};
+    </script>
+
+    <!-- RetroUI Components (inline definitions) -->
+    <script type="text/babel" data-type="module">
+        const {{ useState, useEffect, useRef, useMemo, useCallback }} = React;
+
+        // Simple className merger
+        const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+        // Card Component
+        const Card = ({{ className, title, children, ...props }}) => (
+            <div className={{cn("border-2 border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-[4px_4px_0_0_var(--border)]", className)}} {{...props}}>
+                {{title && <div className="border-b-2 border-[var(--border)] p-4 bg-[var(--primary)] text-[var(--primary-foreground)]"><h3 className="font-bold text-lg uppercase">{{title}}</h3></div>}}
+                {{children && !title && children}}
+                {{children && title && <div className="p-4">{{children}}</div>}}
+            </div>
+        );
+        Card.Header = ({{ className, ...props }}) => <div className={{cn("p-4 border-b-2 border-[var(--border)] bg-[var(--primary)] text-[var(--primary-foreground)]", className)}} {{...props}} />;
+        Card.Title = ({{ className, ...props }}) => <h3 className={{cn("font-bold text-lg uppercase", className)}} {{...props}} />;
+        Card.Description = ({{ className, ...props }}) => <p className={{cn("text-sm mt-1 opacity-80", className)}} {{...props}} />;
+        Card.Content = ({{ className, ...props }}) => <div className={{cn("p-4", className)}} {{...props}} />;
+        Card.Footer = ({{ className, ...props }}) => <div className={{cn("p-4 border-t-2 border-[var(--border)] bg-[var(--muted)]", className)}} {{...props}} />;
+
+        // Button Component
+        const Button = ({{ children, className, variant = "default", size = "md", ...props }}) => {{
+            const variantClasses = {{
+                default: "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90",
+                destructive: "bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:opacity-90",
+                outline: "bg-transparent text-[var(--foreground)] hover:bg-[var(--muted)]",
+                secondary: "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:opacity-90",
+                ghost: "bg-transparent hover:bg-[var(--muted)]",
+            }};
+            const sizeClasses = {{ sm: "px-3 py-1.5 text-sm", md: "px-4 py-2", lg: "px-6 py-3 text-lg" }};
+            return (
+                <button
+                    className={{cn(
+                        "border-2 border-[var(--border)] font-medium uppercase shadow-[4px_4px_0_0_var(--border)] hover:shadow-[2px_2px_0_0_var(--border)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all",
+                        variantClasses[variant],
+                        sizeClasses[size],
+                        className
+                    )}}
+                    {{...props}}
+                >
+                    {{children}}
+                </button>
+            );
+        }};
+
+        // Badge Component
+        const Badge = ({{ children, className, variant = "default", ...props }}) => {{
+            const variants = {{
+                default: "bg-[var(--primary)] text-[var(--primary-foreground)]",
+                secondary: "bg-[var(--secondary)] text-[var(--secondary-foreground)]",
+                outline: "bg-transparent border-[var(--border)]",
+                success: "bg-[var(--success)] text-[var(--success-foreground)]",
+                destructive: "bg-[var(--destructive)] text-[var(--destructive-foreground)]",
+            }};
+            return (
+                <span className={{cn("inline-flex items-center px-2 py-1 text-xs font-bold uppercase border-2 border-[var(--border)]", variants[variant], className)}} {{...props}}>
+                    {{children}}
+                </span>
+            );
+        }};
+
+        // Input Component
+        const Input = ({{ className, ...props }}) => (
+            <input
+                className={{cn("border-2 border-[var(--border)] px-3 py-2 bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]", className)}}
+                {{...props}}
+            />
+        );
+
+        // Textarea Component
+        const Textarea = ({{ className, ...props }}) => (
+            <textarea
+                className={{cn("border-2 border-[var(--border)] px-3 py-2 bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]", className)}}
+                {{...props}}
+            />
+        );
+
+        {frontend_code_clean}
+
+        // Wait for DOM and render
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', renderApp);
+        }} else {{
+            renderApp();
+        }}
+
+        function renderApp() {{
+            try {{
+                console.log('Rendering component: {component_name}');
+                const root = ReactDOM.createRoot(document.getElementById('root'));
+                root.render(<{component_name} />);
+                console.log('Component rendered successfully');
+            }} catch (error) {{
+                console.error('Error rendering component:', error);
+                document.getElementById('root').innerHTML = '<div style="padding: 20px; color: red;">Error: ' + error.message + '</div>';
+            }}
+        }}
+    </script>
+</body>
+</html>"""
+
+        return HTMLResponse(content=preview_html)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[API] Failed to serve preview: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to serve preview: {str(e)}"
+        )
+
+
+class FileUpdateRequest(BaseModel):
+    """Request to update an app file."""
+    content: str
+
+
+@router.put("/{app_id}/files/{file_name}")
+async def update_app_file(
+    app_id: str,
+    file_name: str,
+    request_data: FileUpdateRequest,
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+) -> Dict[str, Any]:
+    """
+    Update an app file (frontend.tsx, backend.py, or manifest.json).
+
+    Used by the code editor to save file changes.
+
+    Args:
+        app_id: App identifier
+        file_name: Name of file to update
+        content: New file content
+        current_user: Current user
+        db: Database session
+
+    Returns:
+        Update result
+
+    Raises:
+        HTTPException: If update fails
+    """
+    try:
+        # Validate file_name for security
+        allowed_files = ["frontend.tsx", "backend.py", "manifest.json"]
+        if file_name not in allowed_files:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File '{file_name}' cannot be updated (allowed: {allowed_files})"
+            )
+
+        # Get app and verify ownership
+        result = await db.execute(
+            select(App).where(
+                App.id == app_id,
+                App.owner_id == current_user.id
+            )
+        )
+        app = result.scalar_one_or_none()
+
+        if not app:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"App '{app_id}' not found or you don't have access"
+            )
+
+        if not app.app_directory:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"App '{app_id}' does not support file editing (not a user-generated app)"
+            )
+
+        # Update file using UserAppManager
+        from app.services.user_app_manager import get_user_app_manager
+        from datetime import datetime, timezone
+
+        manager = get_user_app_manager()
+
+        try:
+            manager.update_file(current_user.id, app_id, file_name, request_data.content)
+
+            # If manifest was updated, parse and update app record
+            if file_name == "manifest.json":
+                manifest = json.loads(request_data.content)
+                app.manifest = manifest
+                # Update app metadata from manifest
+                app.name = manifest.get("name", app.name)
+                app.description = manifest.get("description", app.description)
+                app.version = manifest.get("version", app.version)
+
+            # Update app's updated_at timestamp
+            app.updated_at = datetime.now(timezone.utc)
+            await db.commit()
+
+            logger.info(f"[API] Updated {file_name} for app '{app_id}'")
+
+            return {
+                "success": True,
+                "filename": file_name,
+                "message": f"Successfully updated {file_name}"
+            }
+
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid JSON in manifest.json: {str(e)}"
+            )
+        except Exception as e:
+            logger.error(f"[API] Failed to update file: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to update file: {str(e)}"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[API] File update failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"File update failed: {str(e)}"
+        )
+
+
+@router.get("/{app_id}/files/{file_name}")
+async def serve_app_file(
+    app_id: str,
+    file_name: str,
+    db: DatabaseDep,
+    token: Optional[str] = None,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Serve app files (e.g., frontend.tsx, backend.py, manifest.json).
+
+    Used by the code editor and preview system.
+
+    Args:
+        app_id: App identifier
+        file_name: Name of file to serve
+        db: Database session
+        token: Optional auth token from query param
+        authorization: Optional auth token from header
+
+    Returns:
+        File content
+
+    Raises:
+        HTTPException: If file not found or not accessible
+    """
+    try:
+        from fastapi.responses import PlainTextResponse, JSONResponse
+
+        # Authenticate user from token or header
+        current_user = await get_user_from_token_or_header(db, token, authorization)
+
+        # Validate file_name for security
+        allowed_files = ["frontend.tsx", "backend.py", "manifest.json", "preview.html", "app.bundle.js"]
+        if file_name not in allowed_files:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File '{file_name}' not allowed"
+            )
+
+        # Get app
+        result = await db.execute(
+            select(App).where(
+                App.id == app_id,
+                App.owner_id == current_user.id
+            )
+        )
+        app = result.scalar_one_or_none()
+
+        if not app:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"App '{app_id}' not found or you don't have access"
+            )
+
+        if not app.app_directory:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"App '{app_id}' does not have files (not a user-generated app)"
+            )
+
+        # Read file
+        from app.services.user_app_manager import get_user_app_manager
+        manager = get_user_app_manager()
+
+        try:
+            if file_name == "manifest.json":
+                manifest = manager.read_manifest(current_user.id, app_id)
+                return JSONResponse(content=manifest)
+            elif file_name == "frontend.tsx":
+                content = manager.read_frontend(current_user.id, app_id)
+                return PlainTextResponse(content=content, media_type="text/plain")
+            elif file_name == "backend.py":
+                content = manager.read_backend(current_user.id, app_id)
+                return PlainTextResponse(content=content, media_type="text/plain")
+            elif file_name == "preview.html":
+                content = manager.read_preview_html(current_user.id, app_id)
+                return PlainTextResponse(content=content, media_type="text/html")
+            elif file_name == "app.bundle.js":
+                content = manager.read_bundle(current_user.id, app_id)
+                if content:
+                    return PlainTextResponse(content=content, media_type="application/javascript")
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Bundle file not found"
+                    )
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"File '{file_name}' not found for app '{app_id}'"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[API] Failed to serve file: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to serve file: {str(e)}"
         )
 
 
@@ -1613,3 +2652,199 @@ async def hls_segment(
     return Response(content=seg_path.read_bytes(), media_type=media_type, headers={
         "Cache-Control": "no-store"
     })
+
+
+# ===== Conversation History Endpoints =====
+
+class ConversationResponse(BaseModel):
+    """Response model for a single conversation."""
+    id: int
+    title: str
+    message_count: int
+    created_at: str
+    updated_at: str
+    last_message_at: Optional[str]
+    preview: str  # First user message preview
+
+
+class ConversationDetail(BaseModel):
+    """Detailed conversation with full history."""
+    id: int
+    title: str
+    conversation_history: List[Dict[str, Any]]
+    created_at: str
+    updated_at: str
+    last_message_at: Optional[str]
+
+
+@router.get("/{app_id}/conversations", response_model=List[ConversationResponse])
+async def list_conversations(
+    app_id: str,
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+):
+    """
+    Get all refinement conversations for an app.
+    
+    Returns conversations ordered by last_message_at desc (most recent first).
+    """
+    from app.models.app_platform import AppAgentConversation
+    from datetime import timezone
+    
+    logger.info(f"[API] Listing conversations for app '{app_id}', user {current_user.id}")
+    
+    # Verify app exists and user owns it
+    result = await db.execute(
+        select(App).where(
+            App.id == app_id,
+            App.owner_id == current_user.id
+        )
+    )
+    app = result.scalar_one_or_none()
+    
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"App '{app_id}' not found or you don't own it"
+        )
+    
+    # Get all conversations for this app
+    result = await db.execute(
+        select(AppAgentConversation)
+        .where(
+            AppAgentConversation.app_id == app_id,
+            AppAgentConversation.user_id == current_user.id
+        )
+        .order_by(AppAgentConversation.last_message_at.desc().nullsfirst())
+    )
+    conversations = result.scalars().all()
+    
+    # Format response
+    response = []
+    for conv in conversations:
+        # Get first user message for preview
+        preview = "New conversation"
+        for msg in conv.conversation_history:
+            if msg.get("role") == "user":
+                content = msg.get("content", "")
+                preview = content[:100] + "..." if len(content) > 100 else content
+                break
+        
+        response.append(ConversationResponse(
+            id=conv.id,
+            title=conv.title,
+            message_count=len(conv.conversation_history),
+            created_at=conv.created_at.isoformat() if conv.created_at else "",
+            updated_at=conv.updated_at.isoformat() if conv.updated_at else "",
+            last_message_at=conv.last_message_at.isoformat() if conv.last_message_at else None,
+            preview=preview
+        ))
+    
+    return response
+
+
+@router.get("/{app_id}/conversations/{conversation_id}", response_model=ConversationDetail)
+async def get_conversation(
+    app_id: str,
+    conversation_id: int,
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+):
+    """Get a specific conversation with full message history."""
+    from app.models.app_platform import AppAgentConversation
+    
+    logger.info(f"[API] Getting conversation {conversation_id} for app '{app_id}'")
+    
+    # Get conversation
+    result = await db.execute(
+        select(AppAgentConversation).where(
+            AppAgentConversation.id == conversation_id,
+            AppAgentConversation.app_id == app_id,
+            AppAgentConversation.user_id == current_user.id
+        )
+    )
+    conversation = result.scalar_one_or_none()
+    
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    return ConversationDetail(
+        id=conversation.id,
+        title=conversation.title,
+        conversation_history=conversation.conversation_history,
+        created_at=conversation.created_at.isoformat() if conversation.created_at else "",
+        updated_at=conversation.updated_at.isoformat() if conversation.updated_at else "",
+        last_message_at=conversation.last_message_at.isoformat() if conversation.last_message_at else None
+    )
+
+
+@router.patch("/{app_id}/conversations/{conversation_id}")
+async def update_conversation(
+    app_id: str,
+    conversation_id: int,
+    title: str,
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+):
+    """Update conversation (e.g., rename)."""
+    from app.models.app_platform import AppAgentConversation
+    
+    logger.info(f"[API] Updating conversation {conversation_id}")
+    
+    # Get conversation
+    result = await db.execute(
+        select(AppAgentConversation).where(
+            AppAgentConversation.id == conversation_id,
+            AppAgentConversation.app_id == app_id,
+            AppAgentConversation.user_id == current_user.id
+        )
+    )
+    conversation = result.scalar_one_or_none()
+    
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    conversation.title = title
+    await db.commit()
+    
+    return {"message": "Conversation updated successfully"}
+
+
+@router.delete("/{app_id}/conversations/{conversation_id}")
+async def delete_conversation(
+    app_id: str,
+    conversation_id: int,
+    current_user: CurrentUserDep,
+    db: DatabaseDep
+):
+    """Delete a conversation."""
+    from app.models.app_platform import AppAgentConversation
+    
+    logger.info(f"[API] Deleting conversation {conversation_id}")
+    
+    # Get conversation
+    result = await db.execute(
+        select(AppAgentConversation).where(
+            AppAgentConversation.id == conversation_id,
+            AppAgentConversation.app_id == app_id,
+            AppAgentConversation.user_id == current_user.id
+        )
+    )
+    conversation = result.scalar_one_or_none()
+    
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found"
+        )
+    
+    await db.delete(conversation)
+    await db.commit()
+    
+    return {"message": "Conversation deleted successfully"}

@@ -34,6 +34,9 @@ interface Integration {
 export default function GenerateAppPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const [appName, setAppName] = useState("");
+  const [appId, setAppId] = useState("");
+  const [category, setCategory] = useState("productivity");
   const [userRequest, setUserRequest] = useState("");
   const [schemas, setSchemas] = useState<Schema[]>([]);
   const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -41,6 +44,7 @@ export default function GenerateAppPage() {
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [generatedAppId, setGeneratedAppId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -80,9 +84,32 @@ export default function GenerateAppPage() {
     }
   };
 
+  // Auto-generate app ID from app name
+  useEffect(() => {
+    if (appName) {
+      const id = appName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .substring(0, 50);
+      setAppId(id);
+    }
+  }, [appName]);
+
   const handleGenerate = async () => {
     if (!userRequest.trim()) {
       setError('Please describe what app you want to create');
+      return;
+    }
+
+    if (!appName.trim()) {
+      setError('Please provide an app name');
+      return;
+    }
+
+    if (!appId.trim()) {
+      setError('Please provide an app ID');
       return;
     }
 
@@ -96,16 +123,34 @@ export default function GenerateAppPage() {
         throw new Error('Not authenticated');
       }
 
-      // TODO: Implement app generation
-      // const result = await generateApp(token, { request: userRequest });
-      // if (result.success) {
-      //   setSuccess(true);
-      //   setTimeout(() => router.push('/apps'), 2000);
-      // } else {
-      //   setError(result.error || 'Failed to generate app');
-      // }
+      const response = await fetch('http://localhost:8001/api/v1/apps/generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          app_id: appId,
+          prompt: userRequest,
+          app_name: appName,
+          category: category
+        })
+      });
 
-      setError('App generation is not yet implemented. Coming soon!');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to generate app');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSuccess(true);
+        setGeneratedAppId(result.app_id);
+        setTimeout(() => router.push(`/apps?tab=drafts`), 2000);
+      } else {
+        setError('Failed to generate app');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to generate app');
     } finally {
@@ -160,9 +205,57 @@ export default function GenerateAppPage() {
           </Card.Header>
           <Card.Content>
             <div className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold uppercase mb-2">
+                    App Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={appName}
+                    onChange={(e) => setAppName(e.target.value)}
+                    placeholder="My Awesome App"
+                    className="w-full p-3 border-2 border-[var(--border)] bg-[var(--card)] focus:outline-none focus:border-[var(--primary)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold uppercase mb-2">
+                    App ID * (auto-generated)
+                  </label>
+                  <input
+                    type="text"
+                    value={appId}
+                    onChange={(e) => setAppId(e.target.value)}
+                    placeholder="my-awesome-app"
+                    className="w-full p-3 border-2 border-[var(--border)] bg-[var(--muted)] focus:outline-none focus:border-[var(--primary)] font-mono text-sm"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-bold uppercase mb-2">
-                  App Description
+                  Category
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full p-3 border-2 border-[var(--border)] bg-[var(--card)] focus:outline-none focus:border-[var(--primary)]"
+                >
+                  <option value="productivity">Productivity</option>
+                  <option value="health">Health & Fitness</option>
+                  <option value="finance">Finance</option>
+                  <option value="entertainment">Entertainment</option>
+                  <option value="education">Education</option>
+                  <option value="social">Social</option>
+                  <option value="utilities">Utilities</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold uppercase mb-2">
+                  App Description *
                 </label>
                 <textarea
                   value={userRequest}
@@ -171,6 +264,9 @@ export default function GenerateAppPage() {
                   rows={6}
                   className="w-full p-3 border-2 border-[var(--border)] bg-[var(--card)] focus:outline-none focus:border-[var(--primary)] resize-none"
                 />
+                <p className="text-xs text-[var(--muted-foreground)] mt-2">
+                  Describe what you want your app to do. Be specific about features, data it should track, and how users will interact with it.
+                </p>
               </div>
 
               {/* Example Prompts */}
@@ -215,19 +311,19 @@ export default function GenerateAppPage() {
 
               <Button
                 onClick={handleGenerate}
-                disabled={loading || !userRequest.trim()}
+                disabled={loading || !userRequest.trim() || !appName.trim() || !appId.trim()}
                 size="lg"
                 className="w-full"
               >
                 {loading ? (
                   <>
                     <Loader2 size={20} className="mr-2 animate-spin" />
-                    Generating App...
+                    Generating App... (This may take 1-2 minutes)
                   </>
                 ) : (
                   <>
                     <Sparkles size={20} className="mr-2" />
-                    Generate App
+                    Generate App with AI
                   </>
                 )}
               </Button>

@@ -12,7 +12,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.admin import setup_admin
-from app.api.v1 import auth, chat, data_sources, goals, community, apps
+from app.api.v1 import auth, chat, data_sources, goals, community, apps, errors
 from app.config import settings
 from app.database import close_db, init_db
 
@@ -81,6 +81,7 @@ app.include_router(data_sources.router, prefix="/api/v1/data-sources", tags=["da
 app.include_router(apps.router, prefix="/api/v1/apps", tags=["apps"])
 app.include_router(goals.router, prefix="/api/v1/goals", tags=["goals"])
 app.include_router(community.router, prefix="/api/v1/community", tags=["community"])
+app.include_router(errors.router, prefix="/api/v1", tags=["errors"])
 
 
 @app.get("/")

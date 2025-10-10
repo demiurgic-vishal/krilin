@@ -185,7 +185,7 @@ class PlatformContext:
         log_data = {
             "app_id": self.app_id,
             "user_id": self.user_id,
-            "message": message,
+            "log_message": message,  # Renamed from 'message' to avoid conflict
             **kwargs
         }
 

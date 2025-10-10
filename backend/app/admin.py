@@ -15,6 +15,8 @@ from app.models.conversation import Conversation, Message, AgentMemory
 from app.models.data_source import DataSource, SyncHistory, DataRecord
 from app.models.community import Accomplishment, AccomplishmentComment, AccomplishmentReaction, UserConnection, CommunityChallenge, ChallengeParticipation
 from app.models.marketplace import MarketplaceApp, MarketplaceAppInstallation, MarketplaceAppReview, MarketplaceAppCategory, MarketplaceAppCollection
+from app.models.notification import Notification
+from app.models.error_report import ErrorReport, ErrorPattern
 from app.utils.security import verify_password, get_user_by_email
 from app.database import AsyncSessionLocal
 
@@ -432,6 +434,68 @@ class UserSessionAdmin(ModelView, model=UserSession):
     can_view_details = True
 
 
+class NotificationAdmin(ModelView, model=Notification):
+    """Notification admin view."""
+
+    name = "Notification"
+    name_plural = "Notifications"
+    icon = "fa-solid fa-bell"
+
+    column_searchable_list = [Notification.title, Notification.body]
+    column_sortable_list = [Notification.id, Notification.created_at, Notification.priority]
+    column_default_sort = [(Notification.created_at, True)]
+    column_filters = [Notification.priority, Notification.read, Notification.app_id]
+
+    can_create = False  # Apps create notifications
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
+class ErrorReportAdmin(ModelView, model=ErrorReport):
+    """Error Report admin view."""
+
+    name = "Error Report"
+    name_plural = "Error Reports"
+    icon = "fa-solid fa-bug"
+
+    column_searchable_list = [ErrorReport.message, ErrorReport.file]
+    column_sortable_list = [ErrorReport.id, ErrorReport.created_at, ErrorReport.severity, ErrorReport.occurrence_count]
+    column_default_sort = [(ErrorReport.created_at, True)]
+    column_filters = [
+        ErrorReport.error_type,
+        ErrorReport.severity,
+        ErrorReport.category,
+        ErrorReport.status,
+        ErrorReport.auto_fix_attempted,
+        ErrorReport.auto_fix_successful,
+        ErrorReport.app_id
+    ]
+
+    can_create = False  # System creates error reports
+    can_edit = True  # Allow changing status
+    can_delete = True
+    can_view_details = True
+
+
+class ErrorPatternAdmin(ModelView, model=ErrorPattern):
+    """Error Pattern admin view."""
+
+    name = "Error Pattern"
+    name_plural = "Error Patterns"
+    icon = "fa-solid fa-wand-magic-sparkles"
+
+    column_searchable_list = [ErrorPattern.pattern, ErrorPattern.description]
+    column_sortable_list = [ErrorPattern.id, ErrorPattern.created_at, ErrorPattern.confidence, ErrorPattern.times_applied]
+    column_default_sort = [(ErrorPattern.confidence, True)]
+    column_filters = [ErrorPattern.category, ErrorPattern.fix_type]
+
+    can_create = True  # Allow creating new patterns
+    can_edit = True
+    can_delete = True
+    can_view_details = True
+
+
 def setup_admin(app) -> Admin:
     """
     Setup and configure admin interface.
@@ -456,6 +520,11 @@ def setup_admin(app) -> Admin:
     # Users & Sessions
     admin.add_view(UserAdmin)
     admin.add_view(UserSessionAdmin)
+    admin.add_view(NotificationAdmin)
+
+    # Error Tracking
+    admin.add_view(ErrorReportAdmin)
+    admin.add_view(ErrorPatternAdmin)
 
     # Goals & Progress
     admin.add_view(GoalAdmin)

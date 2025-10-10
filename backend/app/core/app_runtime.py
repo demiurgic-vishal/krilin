@@ -19,7 +19,11 @@ from typing import Any, Dict, Optional, Callable
 from pathlib import Path
 import traceback
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.platform_context import PlatformContext
+from app.models.app_platform import App
 
 logger = logging.getLogger(__name__)
 
@@ -88,13 +92,19 @@ class AppRuntime:
     def __init__(self):
         self._loaded_modules: Dict[str, AppModule] = {}
 
-    async def load_app(self, app_id: str, manifest: Dict[str, Any]) -> AppModule:
+    async def load_app(
+        self,
+        app_id: str,
+        manifest: Dict[str, Any],
+        app_directory: Optional[str] = None
+    ) -> AppModule:
         """
         Load an app's Python module.
 
         Args:
             app_id: App identifier (e.g., "habit-tracker")
             manifest: App manifest dictionary
+            app_directory: Optional path to app directory (for user-generated apps)
 
         Returns:
             AppModule instance
@@ -107,19 +117,44 @@ class AppRuntime:
             return self._loaded_modules[app_id]
 
         try:
-            # Get module path from manifest
-            # Format: apps.habit_tracker.backend
-            module_path = manifest.get("code_module") or f"apps.{app_id.replace('-', '_')}.backend"
+            # Determine module path
+            if app_directory:
+                # User-generated app: load from app_directory
+                # Extract user_id and app_id from path like "apps/user_123/my-app"
+                parts = Path(app_directory).parts
+                if len(parts) >= 3 and parts[-2].startswith("user_"):
+                    # Format: apps.user_123.my_app.backend
+                    user_folder = parts[-2]  # user_123
+                    app_folder = parts[-1].replace('-', '_')  # my_app
+                    module_path = f"apps.{user_folder}.{app_folder}.backend"
+                else:
+                    raise AppRuntimeError(
+                        f"Invalid app_directory format: {app_directory}"
+                    )
+            else:
+                # Official app: use traditional module path
+                # Format: apps.habit_tracker.backend
+                module_path = manifest.get("code_module") or f"apps.{app_id.replace('-', '_')}.backend"
 
             logger.info(f"[RUNTIME] Loading app module: {module_path}")
+
+            # Add app directory to Python path if provided
+            if app_directory:
+                app_dir_parent = str(Path(app_directory).parent.parent.absolute())
+                if app_dir_parent not in sys.path:
+                    sys.path.insert(0, app_dir_parent)
+                    logger.info(f"[RUNTIME] Added to sys.path: {app_dir_parent}")
 
             # Dynamically import the module
             try:
                 module = importlib.import_module(module_path)
             except ModuleNotFoundError:
-                # Try alternative path
-                module_path = f"backend.apps.{app_id.replace('-', '_')}.backend"
-                module = importlib.import_module(module_path)
+                # Try alternative path for official apps
+                if not app_directory:
+                    module_path = f"backend.apps.{app_id.replace('-', '_')}.backend"
+                    module = importlib.import_module(module_path)
+                else:
+                    raise
 
             # Reload if already loaded (for development)
             if module_path in sys.modules:
@@ -165,9 +200,22 @@ class AppRuntime:
         app_id = ctx.app_id
 
         try:
-            # Load app module
-            manifest = {}  # Will be loaded from database in production
-            app_module = await self.load_app(app_id, manifest)
+            # Fetch app from database to get manifest and app_directory
+            result = await ctx._db.execute(
+                select(App).where(App.id == app_id)
+            )
+            app = result.scalar_one_or_none()
+
+            if not app:
+                raise AppRuntimeError(f"App '{app_id}' not found")
+
+            # Load app module with directory info
+            manifest = app.manifest or {}
+            app_module = await self.load_app(
+                app_id,
+                manifest,
+                app_directory=app.app_directory
+            )
 
             # Get action function
             action_func = app_module.get_action(action_name)
@@ -237,9 +285,22 @@ class AppRuntime:
         app_id = ctx.app_id
 
         try:
-            # Load app module
-            manifest = {}  # Will be loaded from database in production
-            app_module = await self.load_app(app_id, manifest)
+            # Fetch app from database
+            result = await ctx._db.execute(
+                select(App).where(App.id == app_id)
+            )
+            app = result.scalar_one_or_none()
+
+            if not app:
+                raise AppRuntimeError(f"App '{app_id}' not found")
+
+            # Load app module with directory info
+            manifest = app.manifest or {}
+            app_module = await self.load_app(
+                app_id,
+                manifest,
+                app_directory=app.app_directory
+            )
 
             # Get output function
             output_func = app_module.get_output_function(output_id)
@@ -268,7 +329,8 @@ class AppRuntime:
     async def initialize_app(
         self,
         ctx: PlatformContext,
-        manifest: Dict[str, Any]
+        manifest: Dict[str, Any],
+        app_directory: Optional[str] = None
     ):
         """
         Initialize an app (called on installation).
@@ -278,14 +340,19 @@ class AppRuntime:
         Args:
             ctx: Platform context
             manifest: App manifest
+            app_directory: Optional path to app directory (for user-generated apps)
         """
         app_id = ctx.app_id
 
         try:
             logger.info(f"[RUNTIME] Initializing app: {app_id}")
 
-            # Load app module
-            app_module = await self.load_app(app_id, manifest)
+            # Load app module with directory info
+            app_module = await self.load_app(
+                app_id,
+                manifest,
+                app_directory=app_directory
+            )
 
             # Tables are already created by installer, so skip table creation here
 
@@ -384,10 +451,14 @@ def get_app_runtime() -> AppRuntime:
 
 # Convenience functions
 
-async def load_app(app_id: str, manifest: Dict[str, Any]) -> AppModule:
+async def load_app(
+    app_id: str,
+    manifest: Dict[str, Any],
+    app_directory: Optional[str] = None
+) -> AppModule:
     """Load an app module."""
     runtime = get_app_runtime()
-    return await runtime.load_app(app_id, manifest)
+    return await runtime.load_app(app_id, manifest, app_directory)
 
 
 async def execute_app_action(
@@ -412,8 +483,9 @@ async def execute_app_output(
 
 async def initialize_app(
     ctx: PlatformContext,
-    manifest: Dict[str, Any]
+    manifest: Dict[str, Any],
+    app_directory: Optional[str] = None
 ):
     """Initialize an app on installation."""
     runtime = get_app_runtime()
-    return await runtime.initialize_app(ctx, manifest)
+    return await runtime.initialize_app(ctx, manifest, app_directory)

@@ -129,17 +129,19 @@ class IntegrationsAPI:
 
         # Build WHERE clause
         where_clauses = [f"user_id = {self.user_id}"]
-        where_clauses.append(f"source_id = {data_source.id}")
+        where_clauses.append(f"data_source_id = {data_source.id}")
 
         params = {}
 
+        param_counter = 0
         if where:
-            for i, (field, value) in enumerate(where.items()):
-                param_name = f"where_{i}"
-
+            for field, value in where.items():
                 # Handle comparison operators
                 if isinstance(value, dict):
                     for op, val in value.items():
+                        param_name = f"where_{param_counter}"
+                        param_counter += 1
+
                         if op == "gte":
                             where_clauses.append(f"data->>'{field}' >= :{param_name}")
                         elif op == "lte":
@@ -152,6 +154,8 @@ class IntegrationsAPI:
                             where_clauses.append(f"data->>'{field}' = :{param_name}")
                         params[param_name] = val
                 else:
+                    param_name = f"where_{param_counter}"
+                    param_counter += 1
                     where_clauses.append(f"data->>'{field}' = :{param_name}")
                     params[param_name] = value
 

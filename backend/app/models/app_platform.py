@@ -17,7 +17,7 @@ from app.database import Base
 
 
 # Type aliases
-AppStatus = Literal["active", "disabled", "pending_update"]
+AppStatus = Literal["draft", "published", "active", "disabled"]
 InstallationStatus = Literal["installed", "installing", "failed", "uninstalled"]
 PermissionType = Literal["data_read", "data_write", "integrations", "notifications", "files", "schedule", "ai"]
 
@@ -52,12 +52,22 @@ class App(Base):
     manifest: Mapped[dict] = mapped_column(JSON)  # Complete app manifest
     code_module: Mapped[Optional[str]] = mapped_column(String(255))  # Python module path, e.g., "apps.habit_tracker.backend"
 
-    # Publishing metadata (for future marketplace)
-    is_official: Mapped[bool] = mapped_column(Boolean, default=True)  # MVP: all apps are official
-    is_public: Mapped[bool] = mapped_column(Boolean, default=True)
+    # NEW: File-based app storage
+    app_directory: Mapped[Optional[str]] = mapped_column(String(500))  # Path to app files, e.g., "apps/user_123/my-tracker"
 
-    # Status
-    status: Mapped[AppStatus] = mapped_column(String(20), default="active")
+    # NEW: AI generation metadata
+    is_ai_generated: Mapped[bool] = mapped_column(Boolean, default=False)
+    generation_prompt: Mapped[Optional[str]] = mapped_column(Text)  # Original user request that generated this app
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), index=True)  # User who created this app
+
+    # Publishing metadata
+    is_official: Mapped[bool] = mapped_column(Boolean, default=True)  # Official vs user-generated
+    is_public: Mapped[bool] = mapped_column(Boolean, default=True)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))  # When app was published
+    publish_count: Mapped[int] = mapped_column(Integer, default=0)  # Version counter
+
+    # Status (draft -> published -> installed)
+    status: Mapped[AppStatus] = mapped_column(String(20), default="draft")
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -71,6 +81,7 @@ class App(Base):
     )
 
     # Relationships
+    owner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[owner_id])
     installations: Mapped[list["AppInstallation"]] = relationship(
         back_populates="app",
         cascade="all, delete-orphan"

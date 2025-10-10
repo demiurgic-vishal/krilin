@@ -1,0 +1,37 @@
+{
+  "id": "app-1",
+  "name": "app 1",
+  "version": "1.1.0",
+  "description": "I want an app to remind me of all meetings/events i have in the next week and generate a todo list of all the work i need to do for those meetings/events today ",
+  "author": "User Generated",
+  "icon": "app",
+  "category": "productivity",
+  "integrations": {
+    "required": [],
+    "optional": [
+      "google_calendar",
+      "microsoft_calendar"
+    ]
+  },
+  "database": {
+    "tables": []
+  },
+  "actions": [
+    {
+      "name": "get_tomorrow_events",
+      "description": "Get calendar events for the next week from connected calendar integrations",
+      "handler": "get_tomorrow_events"
+    }
+  ],
+  "ui": {
+    "widgets": [
+      "main"
+    ],
+    "pages": [],
+    "settings": []
+  },
+  "agent_config": {
+    "system_prompt": "You are a helpful assistant for app 1.",
+    "tools": []
+  }
+}

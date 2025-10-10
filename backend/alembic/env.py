@@ -23,6 +23,8 @@ from app.models.data_source import DataSource, SyncHistory, DataRecord
 from app.models.community import Accomplishment, AccomplishmentReaction, AccomplishmentComment, UserConnection, CommunityChallenge, ChallengeParticipation
 from app.models.marketplace import MarketplaceAppReview, MarketplaceAppCategory, MarketplaceAppCollection, MarketplaceApp, MarketplaceAppInstallation
 from app.models.app_platform import App, AppInstallation, AppDependency, AppPermission, AppTable, AppOutput, AppAgentConversation
+from app.models.notification import Notification
+from app.models.error_report import ErrorReport, ErrorPattern
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

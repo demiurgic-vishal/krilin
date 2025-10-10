@@ -20,27 +20,33 @@ interface App {
   installed_at?: string;
   status?: string;
   is_official?: boolean;
+  is_ai_generated?: boolean;
+  is_installed?: boolean;
+  published_at?: string;
+  publish_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
-type TabType = "my-apps" | "browse";
+type TabType = "workspace" | "library" | "drafts" | "marketplace";
 
 export default function AppsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>("my-apps");
-  const [myApps, setMyApps] = useState<App[]>([]);
-  const [availableApps, setAvailableApps] = useState<App[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>("workspace");
+  const [workspaceApps, setWorkspaceApps] = useState<App[]>([]);
+  const [libraryApps, setLibraryApps] = useState<App[]>([]);
+  const [draftApps, setDraftApps] = useState<App[]>([]);
+  const [marketplaceApps, setMarketplaceApps] = useState<App[]>([]);
   const [filteredApps, setFilteredApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [installing, setInstalling] = useState<Set<string>>(new Set());
 
-  const loadMyApps = useCallback(async () => {
+  const loadWorkspaceApps = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
+      if (!token) throw new Error('Not authenticated');
 
       const response = await fetch('http://localhost:8001/api/v1/apps', {
         headers: {
@@ -49,24 +55,64 @@ export default function AppsPage() {
         }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch apps');
-      }
+      if (!response.ok) throw new Error('Failed to fetch workspace apps');
 
       const data = await response.json();
-      setMyApps(data.apps || []);
+      setWorkspaceApps(data.apps || []);
     } catch (err: any) {
-      console.error('Failed to load my apps:', err);
-      setMyApps([]);
+      console.error('Failed to load workspace apps:', err);
+      setWorkspaceApps([]);
     }
   }, []);
 
-  const loadAvailableApps = useCallback(async () => {
+  const loadLibraryApps = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch('http://localhost:8001/api/v1/apps/library', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch library apps');
+
+      const data = await response.json();
+      setLibraryApps(data.apps || []);
+    } catch (err: any) {
+      console.error('Failed to load library apps:', err);
+      setLibraryApps([]);
+    }
+  }, []);
+
+  const loadDraftApps = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch('http://localhost:8001/api/v1/apps/drafts', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch draft apps');
+
+      const data = await response.json();
+      setDraftApps(data.apps || []);
+    } catch (err: any) {
+      console.error('Failed to load draft apps:', err);
+      setDraftApps([]);
+    }
+  }, []);
+
+  const loadMarketplaceApps = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Not authenticated');
 
       const response = await fetch('http://localhost:8001/api/v1/apps/available', {
         headers: {
@@ -75,23 +121,26 @@ export default function AppsPage() {
         }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch available apps');
-      }
+      if (!response.ok) throw new Error('Failed to fetch marketplace apps');
 
       const data = await response.json();
-      setAvailableApps(data.apps || []);
+      setMarketplaceApps(data.apps || []);
     } catch (err: any) {
-      console.error('Failed to load available apps:', err);
-      setAvailableApps([]);
+      console.error('Failed to load marketplace apps:', err);
+      setMarketplaceApps([]);
     }
   }, []);
 
   const loadApps = useCallback(async () => {
     setLoading(true);
-    await Promise.all([loadMyApps(), loadAvailableApps()]);
+    await Promise.all([
+      loadWorkspaceApps(),
+      loadLibraryApps(),
+      loadDraftApps(),
+      loadMarketplaceApps()
+    ]);
     setLoading(false);
-  }, [loadMyApps, loadAvailableApps]);
+  }, [loadWorkspaceApps, loadLibraryApps, loadDraftApps, loadMarketplaceApps]);
 
   const handleInstall = async (appId: string) => {
     try {
@@ -142,7 +191,21 @@ export default function AppsPage() {
   }, [user, authLoading, router, loadApps]);
 
   useEffect(() => {
-    const currentApps = activeTab === "my-apps" ? myApps : availableApps;
+    let currentApps: App[] = [];
+    switch (activeTab) {
+      case "workspace":
+        currentApps = workspaceApps;
+        break;
+      case "library":
+        currentApps = libraryApps;
+        break;
+      case "drafts":
+        currentApps = draftApps;
+        break;
+      case "marketplace":
+        currentApps = marketplaceApps;
+        break;
+    }
 
     if (searchQuery.trim() === "") {
       setFilteredApps(currentApps);
@@ -157,7 +220,7 @@ export default function AppsPage() {
       );
       setFilteredApps(filtered);
     }
-  }, [searchQuery, activeTab, myApps, availableApps]);
+  }, [searchQuery, activeTab, workspaceApps, libraryApps, draftApps, marketplaceApps]);
 
   if (authLoading || !user) {
     return (
@@ -172,8 +235,8 @@ export default function AppsPage() {
     );
   }
 
-  const activeCount = myApps.filter(app => app.status === 'installed').length;
-  const installedAppIds = new Set(myApps.map(app => app.id));
+  const activeCount = workspaceApps.filter(app => app.status === 'installed').length;
+  const installedAppIds = new Set(workspaceApps.map(app => app.id));
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -208,32 +271,48 @@ export default function AppsPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Tabs */}
-        <div className="flex gap-3 mb-8">
+        <div className="flex gap-3 mb-8 flex-wrap">
           <Button
-            onClick={() => setActiveTab("my-apps")}
-            variant={activeTab === "my-apps" ? "default" : "outline"}
+            onClick={() => setActiveTab("workspace")}
+            variant={activeTab === "workspace" ? "default" : "outline"}
+            size="md"
+          >
+            <Zap size={16} className="mr-2" />
+            Workspace ({workspaceApps.length})
+          </Button>
+          <Button
+            onClick={() => setActiveTab("library")}
+            variant={activeTab === "library" ? "default" : "outline"}
             size="md"
           >
             <Package size={16} className="mr-2" />
-            My Apps ({myApps.length})
+            Library ({libraryApps.length})
           </Button>
           <Button
-            onClick={() => setActiveTab("browse")}
-            variant={activeTab === "browse" ? "default" : "outline"}
+            onClick={() => setActiveTab("drafts")}
+            variant={activeTab === "drafts" ? "default" : "outline"}
+            size="md"
+          >
+            <Clock size={16} className="mr-2" />
+            Drafts ({draftApps.length})
+          </Button>
+          <Button
+            onClick={() => setActiveTab("marketplace")}
+            variant={activeTab === "marketplace" ? "default" : "outline"}
             size="md"
           >
             <Search size={16} className="mr-2" />
-            Browse Apps ({availableApps.length})
+            Marketplace ({marketplaceApps.length})
           </Button>
         </div>
 
-        {/* Stats - Only show on My Apps */}
-        {activeTab === "my-apps" && (
+        {/* Stats - Show different stats per tab */}
+        {activeTab === "workspace" && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <div className="border-2 border-[var(--border)] bg-[var(--accent)] p-6 shadow-[4px_4px_0_0_var(--border)]">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-4xl font-bold mb-1">{myApps.length}</div>
+                  <div className="text-4xl font-bold mb-1">{workspaceApps.length}</div>
                   <div className="text-sm uppercase font-medium">Total Apps</div>
                 </div>
                 <Package size={48} className="opacity-50" />
@@ -253,12 +332,21 @@ export default function AppsPage() {
             <div className="border-2 border-[var(--border)] bg-[var(--muted)] p-6 shadow-[4px_4px_0_0_var(--border)]">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-4xl font-bold mb-1">{myApps.length - activeCount}</div>
+                  <div className="text-4xl font-bold mb-1">{workspaceApps.length - activeCount}</div>
                   <div className="text-sm uppercase font-medium">Inactive</div>
                 </div>
                 <Clock size={48} className="opacity-50" />
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === "drafts" && draftApps.length > 0 && (
+          <div className="mb-8 p-4 border-2 border-[var(--border)] bg-[var(--accent)]">
+            <p className="text-sm uppercase">
+              <strong>{draftApps.length}</strong> draft app{draftApps.length !== 1 ? 's' : ''} in progress.
+              Edit, preview, and publish when ready.
+            </p>
           </div>
         )}
 
@@ -283,18 +371,18 @@ export default function AppsPage() {
           </div>
         ) : filteredApps.length === 0 ? (
           <div className="text-center py-12">
-            {(activeTab === "my-apps" && myApps.length === 0) ? (
+            {activeTab === "workspace" && workspaceApps.length === 0 ? (
               <Card>
                 <Card.Content className="py-16">
-                  <Sparkles size={64} className="mx-auto mb-6 opacity-50" />
-                  <h2 className="text-2xl font-[var(--font-head)] mb-4 uppercase">No Apps Yet</h2>
+                  <Zap size={64} className="mx-auto mb-6 opacity-50" />
+                  <h2 className="text-2xl font-[var(--font-head)] mb-4 uppercase">No Apps Installed</h2>
                   <p className="text-[var(--muted-foreground)] mb-8 max-w-md mx-auto">
-                    Browse available apps or generate your first AI-powered app. Describe what you want to build, and AI will create a custom application with UI, state management, and logic.
+                    Your workspace is empty. Install apps from the marketplace or generate custom apps with AI.
                   </p>
                   <div className="flex gap-4 justify-center">
-                    <Button size="lg" onClick={() => setActiveTab("browse")}>
+                    <Button size="lg" onClick={() => setActiveTab("marketplace")}>
                       <Search size={20} className="mr-2" />
-                      Browse Apps
+                      Browse Marketplace
                     </Button>
                     <Link href="/apps/new">
                       <Button size="lg" variant="success">
@@ -303,6 +391,36 @@ export default function AppsPage() {
                       </Button>
                     </Link>
                   </div>
+                </Card.Content>
+              </Card>
+            ) : activeTab === "library" && libraryApps.length === 0 ? (
+              <Card>
+                <Card.Content className="py-16">
+                  <Package size={64} className="mx-auto mb-6 opacity-50" />
+                  <h2 className="text-2xl font-[var(--font-head)] mb-4 uppercase">Library Empty</h2>
+                  <p className="text-[var(--muted-foreground)] mb-8 max-w-md mx-auto">
+                    No published apps in your library. Publish draft apps to add them here.
+                  </p>
+                  <Button size="lg" onClick={() => setActiveTab("drafts")}>
+                    <Clock size={20} className="mr-2" />
+                    View Drafts
+                  </Button>
+                </Card.Content>
+              </Card>
+            ) : activeTab === "drafts" && draftApps.length === 0 ? (
+              <Card>
+                <Card.Content className="py-16">
+                  <Sparkles size={64} className="mx-auto mb-6 opacity-50" />
+                  <h2 className="text-2xl font-[var(--font-head)] mb-4 uppercase">No Drafts</h2>
+                  <p className="text-[var(--muted-foreground)] mb-8 max-w-md mx-auto">
+                    Generate your first AI-powered app. Describe what you want to build, and AI will create a custom application with UI, state management, and logic.
+                  </p>
+                  <Link href="/apps/new">
+                    <Button size="lg" variant="success">
+                      <Plus size={20} className="mr-2" />
+                      Generate App
+                    </Button>
+                  </Link>
                 </Card.Content>
               </Card>
             ) : (
@@ -316,7 +434,9 @@ export default function AppsPage() {
             {filteredApps.map((app) => {
               const isInstalled = installedAppIds.has(app.id);
               const isInstalling = installing.has(app.id);
-              const isBrowseTab = activeTab === "browse";
+              const isMarketplace = activeTab === "marketplace";
+              const isDraft = activeTab === "drafts";
+              const isLibrary = activeTab === "library";
 
               return (
                 <div key={app.id} className="p-6 border-2 border-[var(--border)] bg-[var(--card)] hover:shadow-[8px_8px_0_0_var(--border)] transition-all hover:translate-x-[-4px] hover:translate-y-[-4px] h-full flex flex-col">
@@ -325,7 +445,7 @@ export default function AppsPage() {
                       {app.icon && (
                         <span className="text-3xl">{app.icon}</span>
                       )}
-                      {isBrowseTab ? (
+                      {isMarketplace ? (
                         isInstalled ? (
                           <div className="px-2 py-1 border-2 border-[var(--border)] uppercase text-xs font-bold bg-[var(--success)] flex items-center gap-1">
                             <CheckCircle2 size={12} />
@@ -336,6 +456,14 @@ export default function AppsPage() {
                             Official
                           </div>
                         )
+                      ) : isDraft ? (
+                        <div className="px-2 py-1 border-2 border-[var(--border)] uppercase text-xs font-bold bg-[var(--muted)]">
+                          Draft
+                        </div>
+                      ) : isLibrary ? (
+                        <div className="px-2 py-1 border-2 border-[var(--border)] uppercase text-xs font-bold bg-[var(--accent)]">
+                          Published
+                        </div>
                       ) : (
                         <div className={`px-2 py-1 border-2 border-[var(--border)] uppercase text-xs font-bold ${
                           app.status === 'installed' ? 'bg-[var(--success)]' : 'bg-[var(--muted)]'
@@ -372,7 +500,59 @@ export default function AppsPage() {
 
                   {/* Action buttons */}
                   <div className="mt-4 pt-4 border-t-2 border-[var(--border)] flex gap-2">
-                    {isBrowseTab ? (
+                    {isDraft ? (
+                      <>
+                        <Link href={`/apps/${app.id}/edit`} className="flex-1">
+                          <Button variant="default" className="w-full" size="sm">
+                            Edit
+                          </Button>
+                        </Link>
+                        <Link href={`/apps/${app.id}/preview`} className="flex-1">
+                          <Button variant="outline" className="w-full" size="sm">
+                            Preview
+                          </Button>
+                        </Link>
+                      </>
+                    ) : isLibrary ? (
+                      <>
+                        {app.is_installed || isInstalled ? (
+                          <Link href={`/apps/${app.id}`} className="flex-1">
+                            <Button variant="success" className="w-full" size="sm">
+                              <CheckCircle2 size={16} className="mr-2" />
+                              Open App
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleInstall(app.id);
+                            }}
+                            disabled={isInstalling}
+                            variant="default"
+                            className="flex-1"
+                            size="sm"
+                          >
+                            {isInstalling ? (
+                              <>
+                                <Loader2 className="mr-2 animate-spin" size={16} />
+                                Installing...
+                              </>
+                            ) : (
+                              <>
+                                <Download size={16} className="mr-2" />
+                                Install
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        <Link href={`/apps/${app.id}/edit`} className="flex-1">
+                          <Button variant="outline" className="w-full" size="sm">
+                            Edit
+                          </Button>
+                        </Link>
+                      </>
+                    ) : isMarketplace ? (
                       isInstalled ? (
                         <Link href={`/apps/${app.id}`} className="flex-1">
                           <Button variant="success" className="w-full" size="sm">
